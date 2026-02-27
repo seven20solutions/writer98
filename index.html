@@ -360,9 +360,25 @@
       line-height: 1;
     }
 
-    @media (max-width: 768px) {
-      .window { width: 100%; }
-      .toolbar { font-size: 0.8rem; }
+    @media (max-width: 800px) {
+      html, body { padding: 0; }
+      .window {
+        width: 100%;
+        min-height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .toolbar {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 6px;
+      }
+      .toolbar button, .toolbar select {
+        flex: none;
+      }
+      .menu-bar span:not(:nth-child(-n+4)):not(:last-child) {
+        display: none;
+      }
       .editor { min-height: 360px; }
     }
     .spell-panel {
@@ -1346,4 +1362,3 @@
 
 </body>
 </html>
-
