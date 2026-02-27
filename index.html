@@ -304,6 +304,32 @@
       margin-top: 0.35rem;
     }
 
+    .modal-body form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .modal-body input {
+      border: 1px solid #7a7a7a;
+      border-radius: 3px;
+      padding: 6px 8px;
+      font-size: 0.9rem;
+      background: #fff;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .modal-warning {
+      color: #a00;
+      font-size: 0.8rem;
+      min-height: 1.1rem;
+      margin-top: 4px;
+    }
+
     .draft-label {
       margin-left: auto;
       font-size: 0.78rem;
@@ -582,6 +608,7 @@
         <button data-action="new" title="New document (Ctrl+N)"><span class="icon"><i class="fa-solid fa-file" aria-hidden="true"></i></span></button>
         <button data-action="save" title="Save (Ctrl+S)"><span class="icon"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i></span></button>
         <button data-action="open" title="Open drafts"><span class="icon"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></span></button>
+        <button data-action="format-markdown" title="Apply Markdown formatting"><span class="icon"><i class="fa-solid fa-hashtag" aria-hidden="true"></i></span></button>
         <button data-action="spell" title="Check spelling"><span class="icon"><i class="fa-solid fa-spell-check" aria-hidden="true"></i></span></button>
         <button data-action="print" title="Print document (Ctrl+P)"><span class="icon"><i class="fa-solid fa-print" aria-hidden="true"></i></span></button>
       <div style="flex:1"></div>
@@ -665,6 +692,26 @@
       </div>
       <div class="modal-body open-modal-body">
         <div class="open-draft-list" id="openList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="newDocModal" aria-hidden="true">
+    <div class="os9-modal" role="dialog" aria-modal="true" aria-labelledby="newDocTitle">
+      <div class="modal-header">
+        <span id="newDocTitle">New Document</span>
+        <button type="button" id="closeNewDoc" aria-label="Cancel new document">x</button>
+      </div>
+      <div class="modal-body">
+        <form id="newDocForm">
+          <label for="newDocName">Name for this new document</label>
+          <input id="newDocName" name="newDocName" type="text" value="Untitled" autocapitalize="words" />
+          <div class="modal-actions">
+            <button type="submit">Create</button>
+            <button type="button" id="cancelNewDoc">Cancel</button>
+          </div>
+          <div class="modal-warning" id="newDocWarning"></div>
+        </form>
       </div>
     </div>
   </div>
@@ -1154,14 +1201,62 @@
       statusNum.textContent = numOn(event) ? 'NUM ON' : 'NUM';
     };
 
+    const newDocModalOverlay = document.getElementById('newDocModal');
+    const newDocForm = document.getElementById('newDocForm');
+    const newDocInput = document.getElementById('newDocName');
+    const newDocWarning = document.getElementById('newDocWarning');
+    const closeNewDocButton = document.getElementById('closeNewDoc');
+    const cancelNewDocButton = document.getElementById('cancelNewDoc');
+
+    const showNewDocModal = () => {
+      newDocWarning.textContent = '';
+      newDocInput.value = 'Untitled';
+      newDocModalOverlay.classList.add('active');
+      newDocModalOverlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => newDocInput.focus(), 0);
+    };
+
+    const hideNewDocModal = () => {
+      newDocModalOverlay.classList.remove('active');
+      newDocModalOverlay.setAttribute('aria-hidden', 'true');
+      focusEditor();
+    };
+
+    newDocModalOverlay.addEventListener('click', event => {
+      if (event.target === newDocModalOverlay) {
+        hideNewDocModal();
+      }
+    });
+
+    closeNewDocButton.addEventListener('click', hideNewDocModal);
+    cancelNewDocButton.addEventListener('click', hideNewDocModal);
+
+    newDocForm.addEventListener('submit', event => {
+      event.preventDefault();
+      const name = newDocInput.value.trim() || 'Untitled';
+      const slug = name;
+      const targetKey = `${docPrefix}${encodeURIComponent(slug)}`;
+      const targetMeta = `${metaPrefix}${encodeURIComponent(slug)}`;
+      if (targetKey === storageKey) {
+        hideNewDocModal();
+        return;
+      }
+      if (localStorage.getItem(targetKey)) {
+        const override = confirm(`A draft named “${name}” already exists. Overwrite it?`);
+        if (!override) return;
+      }
+      persist();
+      localStorage.setItem(targetKey, '<p><br></p>');
+      localStorage.setItem(targetMeta, JSON.stringify({ slug: name, saved: Date.now() }));
+      window.location.href = `${window.location.pathname}?d=${encodeURIComponent(slug)}`;
+    });
+
     document.querySelectorAll('.toolbar button').forEach(button => {
       button.addEventListener('click', () => {
         const action = button.dataset.action;
         switch (action) {
           case 'new':
-            editor.innerHTML = '<p><br></p>';
-            persist();
-            focusEditor();
+            showNewDocModal();
             break;
           case 'save':
             persist();
@@ -1173,6 +1268,9 @@
             openModalOverlay.classList.add('active');
             openModalOverlay.setAttribute('aria-hidden', 'false');
             closeOpenButton.focus();
+            break;
+          case 'format-markdown':
+            formatMarkdown();
             break;
           case 'spell':
             performSpellCheck();
@@ -1238,14 +1336,14 @@
 
     document.addEventListener('keydown', event => {
       refreshLockIndicators(event);
-      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
-      const key = event.key.toLowerCase();
-      let handled = false;
-      switch (key) {
-        case 'b':
-          document.execCommand('bold');
-          handled = true;
-          break;
+        if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+        const key = event.key.toLowerCase();
+        let handled = false;
+        switch (key) {
+          case 'b':
+            document.execCommand('bold');
+            handled = true;
+            break;
         case 'i':
           document.execCommand('italic');
           handled = true;
@@ -1271,27 +1369,33 @@
           handled = true;
           break;
         case 'n':
-          editor.innerHTML = '<p><br></p>';
-          persist();
+          showNewDocModal();
           handled = true;
           break;
-        case 'p':
-          window.print();
-          handled = true;
-          break;
-        case '1':
-          setFormatBlock('h1');
-          handled = true;
-          break;
-        case '2':
-          setFormatBlock('h2');
-          handled = true;
-          break;
-        case '3':
-          setFormatBlock('h3');
-          handled = true;
-          break;
-      }
+          case 'p':
+            window.print();
+            handled = true;
+            break;
+          case '1':
+            setFormatBlock('h1');
+            handled = true;
+            break;
+          case '2':
+            setFormatBlock('h2');
+            handled = true;
+            break;
+          case '3':
+            setFormatBlock('h3');
+            handled = true;
+            break;
+          case 'o':
+            renderDraftList();
+            openModalOverlay.classList.add('active');
+            openModalOverlay.setAttribute('aria-hidden', 'false');
+            closeOpenButton.focus();
+            handled = true;
+            break;
+        }
       const isBulletShortcut = event.shiftKey && (event.key === '8' || event.key === '*' || event.code === 'Digit8' || event.code === 'Numpad8');
       const isNumberShortcut = event.shiftKey && (event.key === '7' || event.key === '&' || event.code === 'Digit7' || event.code === 'Numpad7');
       if (!handled && isBulletShortcut) {
