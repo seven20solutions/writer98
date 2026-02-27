@@ -509,14 +509,6 @@
       gap: 6px;
     }
 
-    .converted {
-      animation: flash-block 0.4s ease;
-    }
-
-    @keyframes flash-block {
-      from { background: rgba(15, 110, 255, 0.12); }
-      to { background: transparent; }
-    }
 
     @page {
       margin: 1in;
@@ -590,7 +582,6 @@
         <button data-action="new" title="New document (Ctrl+N)"><span class="icon"><i class="fa-solid fa-file" aria-hidden="true"></i></span></button>
         <button data-action="save" title="Save (Ctrl+S)"><span class="icon"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i></span></button>
         <button data-action="open" title="Open drafts"><span class="icon"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></span></button>
-        <button data-action="toggle-markdown" title="Toggle Markdown helper" aria-pressed="true"><span class="icon"><i class="fa-solid fa-hashtag" aria-hidden="true"></i></span></button>
         <button data-action="spell" title="Check spelling"><span class="icon"><i class="fa-solid fa-spell-check" aria-hidden="true"></i></span></button>
         <button data-action="print" title="Print document (Ctrl+P)"><span class="icon"><i class="fa-solid fa-print" aria-hidden="true"></i></span></button>
       <div style="flex:1"></div>
@@ -745,14 +736,6 @@
       }
     };
 
-    const markdownKey = 'writer98-markdown';
-    const markdownToggle = document.querySelector('[data-action="toggle-markdown"]');
-    let markdownEnabled = true;
-    const storedMarkdown = localStorage.getItem(markdownKey);
-    if (storedMarkdown !== null) {
-      markdownEnabled = storedMarkdown === 'true';
-    }
-
     const updateSavedNote = () => {
       const base = `Draft: ${slugLabel}`;
       statusNote.textContent = lastSavedAt ? `${base} · Saved ${relativeTime(lastSavedAt)}` : base;
@@ -809,18 +792,6 @@
       noteTimer = setTimeout(updateSavedNote, 1800);
     };
 
-    const setMarkdownState = (enabled, notify = true) => {
-      markdownEnabled = enabled;
-      markdownToggle?.classList.toggle('active', enabled);
-      markdownToggle?.setAttribute('aria-pressed', enabled);
-      localStorage.setItem(markdownKey, enabled);
-      if (notify) {
-        flashNote(`Markdown helper ${enabled ? 'enabled' : 'disabled'}`);
-      }
-    };
-
-    setMarkdownState(markdownEnabled, false);
-
     const persist = () => {
       localStorage.setItem(storageKey, editor.innerHTML);
       const now = Date.now();
@@ -870,89 +841,6 @@
       statusLine.textContent = `Ln ${line}`;
       statusCol.textContent = `Col ${col}`;
       statusWords.textContent = `Words ${wordCount}`;
-    };
-
-    const escapeHtml = str => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    const convertInlineMarkdown = text => {
-      let html = escapeHtml(text);
-      html = html.replace(/\*\*(.+?)\*\*/g, (_, content) => `<strong>${escapeHtml(content)}</strong>`);
-      html = html.replace(/\*(.+?)\*/g, (_, content) => `<em>${escapeHtml(content)}</em>`);
-      html = html.replace(/`(.+?)`/g, (_, content) => `<code>${escapeHtml(content)}</code>`);
-      return html;
-    };
-
-    const findBlock = node => {
-      let current = node;
-      while (current && current !== editor) {
-        if (current.nodeType === 1) {
-          const display = window.getComputedStyle(current).display;
-          if (display === 'block' || display === 'list-item' || display === 'table-cell') return current;
-        }
-        current = current.parentNode;
-      }
-      return editor;
-    };
-
-    const setCaretAtStart = node => {
-      const range = document.createRange();
-      range.selectNodeContents(node);
-      range.collapse(true);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-    };
-
-    const flashBlock = block => {
-      block.classList.add('converted');
-      setTimeout(() => block.classList.remove('converted'), 400);
-    };
-
-    const insertListItemAfter = li => {
-      const list = li.parentNode;
-      if (!list) return null;
-      const newItem = document.createElement('li');
-      newItem.innerHTML = '<br>';
-      if (li.nextSibling) {
-        list.insertBefore(newItem, li.nextSibling);
-      } else {
-        list.appendChild(newItem);
-      }
-      setCaretAtStart(newItem);
-      return newItem;
-    };
-
-    const applyMarkdownForLine = ({ block, lineText } = {}) => {
-      if (!block || !block.parentNode) return null;
-      if (!block || !block.parentNode) return;
-      const headingMatch = lineText.match(/^\s*(#{1,6})\s+(.*)$/);
-      if (headingMatch) {
-        const level = headingMatch[1].length;
-        const content = headingMatch[2];
-        const heading = document.createElement(`h${level}`);
-        heading.innerHTML = convertInlineMarkdown(content);
-        block.parentNode.replaceChild(heading, block);
-        flashBlock(heading);
-        return { block: heading, type: 'heading' };
-      }
-      const listMatch = lineText.match(/^\s*[-*+]\s+(.*)$/);
-      if (listMatch) {
-        const content = listMatch[1];
-        const ul = document.createElement('ul');
-        const li = document.createElement('li');
-        li.innerHTML = convertInlineMarkdown(content);
-        ul.appendChild(li);
-        block.parentNode.replaceChild(ul, block);
-        flashBlock(li);
-        const nextItem = insertListItemAfter(li);
-        if (nextItem) {
-          flashBlock(nextItem);
-        }
-        return { block: li, type: 'list', createdListItem: !!nextItem };
-      }
-      block.innerHTML = convertInlineMarkdown(block.textContent);
-      flashBlock(block);
-      return { block, type: 'text' };
     };
 
     const dictionaryUrl = 'https://cdn.jsdelivr.net/npm/spell-checker-js@1.2.6/dictionaries/en/english.txt';
@@ -1286,9 +1174,6 @@
             openModalOverlay.setAttribute('aria-hidden', 'false');
             closeOpenButton.focus();
             break;
-          case 'toggle-markdown':
-            setMarkdownState(!markdownEnabled);
-            break;
           case 'spell':
             performSpellCheck();
             break;
@@ -1353,39 +1238,6 @@
 
     document.addEventListener('keydown', event => {
       refreshLockIndicators(event);
-      if (event.key === 'Enter' && markdownEnabled) {
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount) {
-          const range = selection.getRangeAt(0);
-          const block = findBlock(range.startContainer);
-          if (block && block !== editor) {
-            const lineRange = range.cloneRange();
-            lineRange.selectNodeContents(block);
-            lineRange.setEnd(range.startContainer, range.startOffset);
-            const lineText = lineRange.toString();
-            event.preventDefault();
-            const result = applyMarkdownForLine({ block, lineText });
-            if (result?.type === 'list' && result.createdListItem) {
-              return;
-            }
-            const newBlock = document.createElement('div');
-            newBlock.innerHTML = '<br>';
-            if (result && result.block && result.block.parentNode) {
-              result.block.parentNode.insertBefore(newBlock, result.block.nextSibling);
-            } else {
-              block.parentNode.insertBefore(newBlock, block.nextSibling);
-            }
-            setCaretAtStart(newBlock);
-            return;
-          }
-        }
-        event.preventDefault();
-        const fallback = document.createElement('div');
-        fallback.innerHTML = '<br>';
-        editor.appendChild(fallback);
-        setCaretAtStart(fallback);
-        return;
-      }
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
       const key = event.key.toLowerCase();
       let handled = false;
