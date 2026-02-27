@@ -218,6 +218,14 @@
       box-shadow: inset 0 0 0 1px #1b71d7, 0 0 0 2px rgba(27,113,215,.3);
     }
 
+    .page-break-marker {
+      border: none;
+      border-top: 1px dashed rgba(0, 0, 0, 0.4);
+      margin: 1.5rem 0;
+      height: 0;
+      background: transparent;
+    }
+
       .status-bar {
         display: flex;
         justify-content: space-between;
@@ -550,7 +558,16 @@
       body {
         background: #fff;
         padding: 0;
-        display: block;
+        display: block !important;
+        align-items: normal;
+        justify-content: flex-start;
+        text-align: left;
+        width: 100%;
+        margin: 0;
+      }
+      
+      html {
+        height: auto;
       }
 
       .window {
@@ -559,6 +576,8 @@
         box-shadow: none;
         border-radius: 0;
         margin: 0;
+        display: block;
+        padding: 0;
       }
 
       .chrome-stack {
@@ -586,6 +605,15 @@
         min-height: auto;
         margin: 0;
         padding: 0;
+      }
+
+      .page-break-marker {
+        display: block;
+        border: none;
+        margin: 0;
+        height: 0;
+        page-break-after: always;
+        break-after: page;
       }
     }
   </style>
@@ -617,10 +645,12 @@
       <div class="toolbar" aria-label="Formatting toolbar">
         <button data-action="new" title="New document (Ctrl+N)"><span class="icon"><i class="fa-solid fa-file" aria-hidden="true"></i></span></button>
         <button data-action="save" title="Save (Ctrl+S)"><span class="icon"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i></span></button>
+        <button data-action="download" title="Download document"><span class="icon"><i class="fa-solid fa-download" aria-hidden="true"></i></span></button>
         <button data-action="open" title="Open drafts"><span class="icon"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></span></button>
         <button data-action="format-markdown" title="Apply Markdown formatting"><span class="icon"><i class="fa-solid fa-hashtag" aria-hidden="true"></i></span></button>
         <button data-action="spell" title="Check spelling"><span class="icon"><i class="fa-solid fa-spell-check" aria-hidden="true"></i></span></button>
         <button data-action="print" title="Print document (Ctrl+P)"><span class="icon"><i class="fa-solid fa-print" aria-hidden="true"></i></span></button>
+        <button data-action="page-break" title="Insert page break (Ctrl/Cmd+Shift+-)"><span class="icon"><i class="fa-solid fa-minus" aria-hidden="true"></i></span></button>
       <div style="flex:1"></div>
       <button data-action="bold" title="Bold (Ctrl+B)"><span class="icon">B</span></button>
       <button data-action="italic" title="Italic (Ctrl+I)"><span class="icon">I</span></button>
@@ -776,6 +806,247 @@
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
     }
+
+    const getDownloadFilename = () => {
+      const label = draftLabelEl?.textContent?.trim() || slugLabel || 'Untitled';
+      const base = label !== 'Untitled' ? label : 'document';
+      const safe = base
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-');
+      return `${safe || 'document'}.rtf`;
+    };
+
+    const defaultFontName = 'Times New Roman';
+    const headingSizes = { H1: 48, H2: 36, H3: 32 };
+
+    const normalizeFontName = raw => {
+      if (!raw) return defaultFontName;
+      const parts = raw.split(',');
+      const candidate = parts[0].trim().replace(/^['"]+|['"]+$/g, '');
+      return candidate || defaultFontName;
+    };
+
+    const createFontRegistry = () => {
+      const map = new Map();
+      let nextId = 0;
+      const registerFont = name => {
+        const sanitized = normalizeFontName(name);
+        if (!map.has(sanitized)) {
+          map.set(sanitized, nextId);
+          nextId += 1;
+        }
+        return map.get(sanitized);
+      };
+      return { registerFont, map };
+    };
+
+    const escapeForRTF = text =>
+      text.replace(/[\\{}]/g, match => `\\${match}`).replace(/\n/g, '\\line ');
+
+    const parseFontSize = value => {
+      if (!value) return null;
+      const pxMatch = value.match(/([\d.]+)px/);
+      if (pxMatch) {
+        return Math.round(Number(pxMatch[1]) * 1.5);
+      }
+      const ptMatch = value.match(/([\d.]+)pt/);
+      if (ptMatch) {
+        return Math.round(Number(ptMatch[1]) * 2);
+      }
+      const numeric = Number(value);
+      if (!Number.isNaN(numeric)) {
+        return Math.round(numeric * 2);
+      }
+      return null;
+    };
+
+    const applyNodeStyles = (node, state, context) => {
+      const style = node.style;
+      if (style) {
+        if (style.fontFamily) {
+          state.fontId = context.registerFont(style.fontFamily);
+        }
+        const size = parseFontSize(style.fontSize);
+        if (size) {
+          state.fontSize = size;
+        }
+        if (style.fontWeight) {
+          const weight = style.fontWeight.toString().toLowerCase();
+          const numeric = Number(style.fontWeight);
+          if (weight === 'bold' || (!Number.isNaN(numeric) && numeric >= 600)) {
+            state.bold = true;
+          } else if (weight === 'normal' || (!Number.isNaN(numeric) && numeric < 600)) {
+            state.bold = false;
+          }
+        }
+        const fontStyle = style.fontStyle;
+        if (fontStyle) {
+          state.italic = fontStyle === 'italic' || fontStyle === 'oblique';
+        }
+        const textDecoration = style.textDecoration;
+        if (textDecoration && textDecoration.includes('underline')) {
+          state.underline = true;
+        }
+      }
+      if (node.getAttribute) {
+        const face = node.getAttribute('face');
+        if (face) {
+          state.fontId = context.registerFont(face);
+        }
+      }
+    };
+
+    const computeInlineDiff = (prev, next) => {
+      const prefix = [];
+      const suffix = [];
+      if (next.fontId !== prev.fontId) {
+        prefix.push(`\\f${next.fontId}`);
+        suffix.unshift(`\\f${prev.fontId}`);
+      }
+      if (next.fontSize !== prev.fontSize) {
+        prefix.push(`\\fs${next.fontSize}`);
+        suffix.unshift(`\\fs${prev.fontSize}`);
+      }
+      const toggles = [
+        { key: 'bold', command: '\\b' },
+        { key: 'italic', command: '\\i' },
+        { key: 'underline', command: '\\ul' }
+      ];
+      toggles.forEach(({ key, command }) => {
+        if (next[key] !== prev[key]) {
+          if (next[key]) {
+            prefix.push(command);
+          } else {
+            prefix.push(`${command}0`);
+          }
+          if (prev[key]) {
+            suffix.unshift(command);
+          } else {
+            suffix.unshift(`${command}0`);
+          }
+        }
+      });
+      return {
+        prefix: prefix.length ? `${prefix.join(' ')} ` : '',
+        suffix: suffix.length ? ` ${suffix.join(' ')}` : ''
+      };
+    };
+
+    const convertChildren = (node, state, context) =>
+      Array.from(node.childNodes)
+        .map(child => convertNode(child, state, context))
+        .join('');
+
+    const convertInlineElement = (node, state, context) => {
+      const inlineState = { ...state };
+      const tag = node.tagName && node.tagName.toUpperCase();
+      if (tag === 'B' || tag === 'STRONG') {
+        inlineState.bold = true;
+      }
+      if (tag === 'I' || tag === 'EM') {
+        inlineState.italic = true;
+      }
+      if (tag === 'U') {
+        inlineState.underline = true;
+      }
+      if (tag === 'FONT') {
+        const face = node.getAttribute('face');
+        if (face) {
+          inlineState.fontId = context.registerFont(face);
+        }
+        const sizeAttr = node.getAttribute('size');
+        const size = sizeAttr ? parseFontSize(`${Number(sizeAttr) * 4}px`) : null;
+        if (size) {
+          inlineState.fontSize = size;
+        }
+      }
+      applyNodeStyles(node, inlineState, context);
+      const { prefix, suffix } = computeInlineDiff(state, inlineState);
+      const children = convertChildren(node, inlineState, context);
+      return `${prefix}${children}${suffix}`;
+    };
+
+    const convertNode = (node, state, context) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return escapeForRTF(node.textContent || '');
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) {
+        return '';
+      }
+      const tag = node.tagName.toUpperCase();
+      if (tag === 'BR') {
+        return '\\line ';
+      }
+      if (tag === 'HR') {
+        if (node.classList.contains('page-break-marker')) {
+          return '\\pard\\page\\par\n';
+        }
+        return '\\pard\\par\n';
+      }
+      if (tag === 'UL' || tag === 'OL') {
+        context.listStack.push({ type: tag === 'OL' ? 'ol' : 'ul', counter: 1 });
+        const content = convertChildren(node, state, context);
+        context.listStack.pop();
+        return content;
+      }
+      if (tag === 'LI') {
+        const listInfo = context.listStack[context.listStack.length - 1];
+        if (!listInfo) {
+          return convertChildren(node, state, context);
+        }
+        const depth = context.listStack.length;
+        const indent = depth * 720;
+        const prefixText = listInfo.type === 'ol' ? `${listInfo.counter++}.` : '\\bullet';
+        const inlineState = { ...state };
+        applyNodeStyles(node, inlineState, context);
+        const { prefix, suffix } = computeInlineDiff(state, inlineState);
+        const children = convertChildren(node, inlineState, context);
+        return `\\pard\\li${indent}\\fi-360 ${prefixText}\\tab ${prefix}${children}${suffix}\\par\n`;
+      }
+      if (tag === 'P' || tag === 'DIV' || tag === 'H1' || tag === 'H2' || tag === 'H3') {
+        const blockState = { ...state };
+        if (tag === 'H1') {
+          blockState.bold = true;
+          blockState.fontSize = headingSizes.H1;
+        } else if (tag === 'H2') {
+          blockState.bold = true;
+          blockState.fontSize = headingSizes.H2;
+        } else if (tag === 'H3') {
+          blockState.bold = true;
+          blockState.fontSize = headingSizes.H3;
+        }
+        applyNodeStyles(node, blockState, context);
+        const { prefix, suffix } = computeInlineDiff(state, blockState);
+        const children = convertChildren(node, blockState, context);
+        return `\\pard ${prefix}${children}${suffix}\\par\n`;
+      }
+      return convertInlineElement(node, state, context);
+    };
+
+    const buildRTFDocument = () => {
+      const registry = createFontRegistry();
+      const defaultFontId = registry.registerFont(defaultFontName);
+      const context = {
+        registerFont: registry.registerFont,
+        listStack: []
+      };
+      const baseState = {
+        fontId: defaultFontId,
+        fontSize: 24,
+        bold: false,
+        italic: false,
+        underline: false
+      };
+      const body = convertChildren(editor, baseState, context);
+      const fonts = Array.from(registry.map.entries()).sort((a, b) => a[1] - b[1]);
+      const fontEntries = fonts.map(([name, id]) => `{\\f${id} ${name};}`).join('');
+      const fontTable = `{\\fonttbl${fontEntries}}`;
+      return `{
+\\rtf1\\ansi\\ansicpg1252\\deff0${fontTable}
+${body}
+}`;
+    };
 
     const updateDraftLabel = () => {
       draftLabelEl.textContent = slugLabel;
@@ -1273,6 +1544,11 @@
             copyDocument();
             focusEditor();
             break;
+          case 'download':
+            persist();
+            downloadDocument();
+            focusEditor();
+            break;
           case 'open':
             renderDraftList();
             openModalOverlay.classList.add('active');
@@ -1287,6 +1563,9 @@
             break;
           case 'print':
             window.print();
+            break;
+          case 'page-break':
+            insertPageBreak();
             break;
           case 'bold':
             document.execCommand('bold');
@@ -1358,10 +1637,10 @@
           document.execCommand('italic');
           handled = true;
           break;
-        case 'u':
-          document.execCommand('underline');
-          handled = true;
-          break;
+          case 'u':
+            document.execCommand('underline');
+            handled = true;
+            break;
         case 'l':
           document.execCommand('justifyLeft');
           handled = true;
@@ -1406,7 +1685,16 @@
             handled = true;
             break;
         }
-      const isBulletShortcut = event.shiftKey && (event.key === '8' || event.key === '*' || event.code === 'Digit8' || event.code === 'Numpad8');
+        const isPageBreakShortcut =
+          !handled &&
+          (event.ctrlKey || event.metaKey) &&
+          event.shiftKey &&
+          (key === '-' || key === '_' || event.code === 'Minus');
+        if (isPageBreakShortcut) {
+          insertPageBreak();
+          handled = true;
+        }
+        const isBulletShortcut = event.shiftKey && (event.key === '8' || event.key === '*' || event.code === 'Digit8' || event.code === 'Numpad8');
       const isNumberShortcut = event.shiftKey && (event.key === '7' || event.key === '&' || event.code === 'Digit7' || event.code === 'Numpad7');
       if (!handled && isBulletShortcut) {
         document.execCommand('insertUnorderedList');
@@ -1455,6 +1743,47 @@
           flashNote('Clipboard blocked');
         }
       }
+    };
+
+    const downloadDocument = () => {
+      const filename = getDownloadFilename();
+      const rtfContent = buildRTFDocument();
+      const blob = new Blob([rtfContent], { type: 'application/rtf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      flashNote('RTF download ready');
+    };
+
+    const insertPageBreak = () => {
+      const hr = document.createElement('hr');
+      hr.className = 'page-break-marker';
+      hr.setAttribute('aria-hidden', 'true');
+      const paragraph = document.createElement('p');
+      paragraph.appendChild(document.createElement('br'));
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount) {
+        editor.appendChild(hr);
+        editor.appendChild(span);
+      } else {
+        const range = selection.getRangeAt(0);
+        range.collapse(false);
+        const fragment = document.createDocumentFragment();
+        fragment.appendChild(hr);
+        fragment.appendChild(paragraph);
+        range.insertNode(fragment);
+        const newRange = document.createRange();
+        newRange.setStart(paragraph, 0);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+      flashNote('Page break inserted');
+      focusEditor();
     };
 
     const openDraftKeys = () => Object.keys(localStorage).filter(key => key.startsWith(docPrefix));
