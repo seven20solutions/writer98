@@ -922,9 +922,8 @@
       return newItem;
     };
 
-    const applyMarkdownForLine = info => {
-      if (!info) return;
-      const { block, lineText } = info;
+    const applyMarkdownForLine = ({ block, lineText } = {}) => {
+      if (!block || !block.parentNode) return null;
       if (!block || !block.parentNode) return;
       const headingMatch = lineText.match(/^\s*(#{1,6})\s+(.*)$/);
       if (headingMatch) {
@@ -934,7 +933,7 @@
         heading.innerHTML = convertInlineMarkdown(content);
         block.parentNode.replaceChild(heading, block);
         flashBlock(heading);
-        return;
+        return { block: heading, type: 'heading' };
       }
       const listMatch = lineText.match(/^\s*[-*+]\s+(.*)$/);
       if (listMatch) {
@@ -949,10 +948,11 @@
         if (nextItem) {
           flashBlock(nextItem);
         }
-        return;
+        return { block: li, type: 'list', createdListItem: !!nextItem };
       }
       block.innerHTML = convertInlineMarkdown(block.textContent);
       flashBlock(block);
+      return { block, type: 'text' };
     };
 
     const dictionaryUrl = 'https://cdn.jsdelivr.net/npm/spell-checker-js@1.2.6/dictionaries/en/english.txt';
@@ -1363,14 +1363,28 @@
             lineRange.selectNodeContents(block);
             lineRange.setEnd(range.startContainer, range.startOffset);
             const lineText = lineRange.toString();
-            const listTrigger = /^\s*[-*+]\s+/.test(lineText);
-            if (listTrigger) {
-              event.preventDefault();
+            event.preventDefault();
+            const result = applyMarkdownForLine({ block, lineText });
+            if (result?.type === 'list' && result.createdListItem) {
+              return;
             }
-            const info = { block, lineText };
-            setTimeout(() => applyMarkdownForLine(info), 0);
+            const newBlock = document.createElement('div');
+            newBlock.innerHTML = '<br>';
+            if (result && result.block && result.block.parentNode) {
+              result.block.parentNode.insertBefore(newBlock, result.block.nextSibling);
+            } else {
+              block.parentNode.insertBefore(newBlock, block.nextSibling);
+            }
+            setCaretAtStart(newBlock);
+            return;
           }
         }
+        event.preventDefault();
+        const fallback = document.createElement('div');
+        fallback.innerHTML = '<br>';
+        editor.appendChild(fallback);
+        setCaretAtStart(fallback);
+        return;
       }
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
       const key = event.key.toLowerCase();
