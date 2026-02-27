@@ -393,6 +393,9 @@
         box-shadow: 0 8px 16px rgba(0,0,0,.25);
         transition: height 0.2s ease, padding 0.2s ease;
       }
+      body.mobile-keyboard-open .chrome-stack {
+        transform: translateY(0);
+      }
       .chrome-stack.collapsed {
         padding: 2px 8px 4px;
       }
@@ -734,6 +737,22 @@
 
     const chromeStack = document.querySelector('.chrome-stack');
     let isChromeCollapsed = false;
+    let keyboardOpen = false;
+    let baseViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+    const updateKeyboardState = () => {
+      if (!window.visualViewport) return;
+      const delta = baseViewportHeight - window.visualViewport.height;
+      const show = delta > 120 && window.innerWidth <= 800;
+      if (show !== keyboardOpen) {
+        document.body.classList.toggle('mobile-keyboard-open', show);
+        if (show) {
+          window.scrollTo(0, 0);
+        }
+        keyboardOpen = show;
+      }
+    };
+
     const handleMobileChrome = () => {
       if (!chromeStack) return;
       if (window.innerWidth > 800) {
@@ -748,10 +767,30 @@
         document.body.classList.toggle('chrome-collapsed', shouldCollapse);
         isChromeCollapsed = shouldCollapse;
       }
+      updateKeyboardState();
     };
     window.addEventListener('scroll', handleMobileChrome, { passive: true });
     window.addEventListener('resize', handleMobileChrome);
     handleMobileChrome();
+
+    const updateKeyboardState = () => {
+      if (!window.visualViewport) return;
+      const delta = baseViewportHeight - window.visualViewport.height;
+      const show = delta > 120 && window.innerWidth <= 800;
+      if (show !== keyboardOpen) {
+        document.body.classList.toggle('mobile-keyboard-open', show);
+        if (show) {
+          window.scrollTo(0, 0);
+        }
+        keyboardOpen = show;
+      }
+    };
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        baseViewportHeight = Math.max(baseViewportHeight, window.visualViewport.height);
+        updateKeyboardState();
+      });
+    }
 
     const flashNote = message => {
       clearTimeout(noteTimer);
