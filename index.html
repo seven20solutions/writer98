@@ -330,6 +330,7 @@
       padding: 6px 8px;
       font-size: 0.9rem;
       background: #fff;
+      width: 100%;
     }
 
     .modal-actions {
@@ -650,6 +651,7 @@
         <button data-action="format-markdown" title="Apply Markdown formatting"><span class="icon"><i class="fa-solid fa-hashtag" aria-hidden="true"></i></span></button>
         <button data-action="spell" title="Check spelling"><span class="icon"><i class="fa-solid fa-spell-check" aria-hidden="true"></i></span></button>
         <button data-action="print" title="Print document (Ctrl+P)"><span class="icon"><i class="fa-solid fa-print" aria-hidden="true"></i></span></button>
+        <button data-action="share" title="Share document"><span class="icon"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i></span></button>
         <button data-action="page-break" title="Insert page break (Ctrl/Cmd+Shift+-)"><span class="icon"><i class="fa-solid fa-minus" aria-hidden="true"></i></span></button>
       <div style="flex:1"></div>
       <button data-action="bold" title="Bold (Ctrl+B)"><span class="icon">B</span></button>
@@ -756,6 +758,24 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="shareModal" aria-hidden="true">
+    <div class="os9-modal" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
+      <div class="modal-header">
+        <span id="shareModalTitle">Share Document</span>
+        <button type="button" id="closeShareModal" aria-label="Close share dialog">x</button>
+      </div>
+      <div class="modal-body">
+        <p>Copy the share link below and send it to someone you trust.</p>
+        <input id="shareUrl" type="text" readonly />
+        <div class="modal-actions">
+          <button type="button" id="copyShareLink">Copy link</button>
+          <button type="button" id="dismissShare" aria-label="Close share dialog">Close</button>
+        </div>
+        <div class="modal-warning" id="shareNotice"></div>
+      </div>
+    </div>
+  </div>
+
       <script>
     const docPrefix = 'writer98-doc-';
     const metaPrefix = 'writer98-meta-';
@@ -771,12 +791,35 @@
     const openModalOverlay = document.getElementById('openModal');
     const openListEl = document.getElementById('openList');
     const closeOpenButton = document.getElementById('closeOpenModal');
+    const shareModalOverlay = document.getElementById('shareModal');
+    const shareUrlInput = document.getElementById('shareUrl');
+    const copyShareLinkButton = document.getElementById('copyShareLink');
+    const dismissShareButton = document.getElementById('dismissShare');
+    const closeShareDialogButton = document.getElementById('closeShareModal');
+    const shareNotice = document.getElementById('shareNotice');
 
     const querySlug = new URLSearchParams(window.location.search).get('d');
+    const sharedMessage = new URLSearchParams(window.location.search).get('m');
     const activeSlug = querySlug ? querySlug : 'untitled';
     const slugLabel = formatLabel(activeSlug);
     const storageKey = `${docPrefix}${encodeURIComponent(activeSlug)}`;
     const metaKey = `${metaPrefix}${encodeURIComponent(activeSlug)}`;
+    const shareBaseUrl = 'https://writer-98.com/?m=';
+    let lzStringPromise = null;
+    const ensureLZString = () => {
+      if (window.LZString) return Promise.resolve(window.LZString);
+      if (lzStringPromise) return lzStringPromise;
+      lzStringPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js';
+        script.onload = () => resolve(window.LZString);
+        script.onerror = () => reject(new Error('Failed to load LZString'));
+        document.head.appendChild(script);
+      });
+      return lzStringPromise;
+    };
+    const ensureEditorContent = html =>
+      typeof html === 'string' && html.trim() ? html : '<p><br></p>';
 
     let lastSavedAt = null;
     let noteTimer;
@@ -806,6 +849,25 @@
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
     }
+
+    const loadSharedContent = async () => {
+      if (!sharedMessage) return false;
+      try {
+        const LZString = await ensureLZString();
+        const decoded = LZString.decompressFromEncodedURIComponent(sharedMessage);
+        if (decoded === null || decoded === undefined) {
+          throw new Error('Shared payload empty');
+        }
+        editor.innerHTML = ensureEditorContent(decoded);
+        scheduleSave();
+        flashNote('Loaded shared text');
+        return true;
+      } catch (error) {
+        console.warn('Shared content load failed', error);
+        flashNote('Unable to load shared content');
+        return false;
+      }
+    };
 
     const getDownloadFilename = () => {
       const label = draftLabelEl?.textContent?.trim() || slugLabel || 'Untitled';
@@ -1053,16 +1115,16 @@ ${body}
       document.title = slugLabel && slugLabel !== 'Untitled' ? `Writer 98 · ${slugLabel}` : 'Writer 98';
     };
 
-    const metaKeyForSlug = slug => `${metaPrefix}${encodeURIComponent(slug)}`;
-    const loadMetaForSlug = slug => {
-      const raw = localStorage.getItem(metaKeyForSlug(slug));
-      if (!raw) return null;
-      try {
-        return JSON.parse(raw);
-      } catch (error) {
-        return null;
-      }
-    };
+      const metaKeyForSlug = slug => `${metaPrefix}${encodeURIComponent(slug)}`;
+      const loadMetaForSlug = slug => {
+        const raw = localStorage.getItem(metaKeyForSlug(slug));
+        if (!raw) return null;
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          return null;
+        }
+      };
 
     const updateSavedNote = () => {
       const base = `Draft: ${slugLabel}`;
@@ -1564,6 +1626,9 @@ ${body}
           case 'print':
             window.print();
             break;
+          case 'share':
+            shareDocument();
+            break;
           case 'page-break':
             insertPageBreak();
             break;
@@ -1745,6 +1810,64 @@ ${body}
       }
     };
 
+    const openShareModal = url => {
+      if (!shareModalOverlay || !shareUrlInput) return;
+      shareUrlInput.value = url;
+      shareNotice.textContent = '';
+      shareModalOverlay.classList.add('active');
+      shareModalOverlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => {
+        shareUrlInput.focus();
+        shareUrlInput.select();
+      }, 0);
+    };
+
+    const closeShareModal = () => {
+      if (!shareModalOverlay) return;
+      shareModalOverlay.classList.remove('active');
+      shareModalOverlay.setAttribute('aria-hidden', 'true');
+      shareNotice.textContent = '';
+      focusEditor();
+    };
+
+    const copyShareUrlToClipboard = async () => {
+      if (!shareUrlInput?.value) return;
+      try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(shareUrlInput.value);
+        } else {
+          shareUrlInput.select();
+          document.execCommand('copy');
+        }
+        shareNotice.textContent = 'Link copied to clipboard';
+        shareUrlInput.select();
+      } catch (error) {
+        console.warn('Share link copy failed', error);
+        try {
+          shareUrlInput.select();
+          document.execCommand('copy');
+          shareNotice.textContent = 'Link copied to clipboard';
+          return;
+        } catch (fallbackError) {
+          console.warn('Fallback share link copy failed', fallbackError);
+          shareNotice.textContent = 'Clipboard blocked';
+        }
+      }
+    };
+
+    const shareDocument = async () => {
+      try {
+        const LZString = await ensureLZString();
+        const html = editor.innerHTML.trim() ? editor.innerHTML : '<p><br></p>';
+        const encoded = LZString.compressToEncodedURIComponent(html);
+        const shareUrl = `${shareBaseUrl}${encoded}`;
+        openShareModal(shareUrl);
+      } catch (error) {
+        console.warn('Unable to prepare share link', error);
+        flashNote('Unable to prepare share link');
+      }
+    };
+
     const downloadDocument = () => {
       const filename = getDownloadFilename();
       const rtfContent = buildRTFDocument();
@@ -1868,6 +1991,17 @@ ${body}
       }
     });
 
+    if (shareModalOverlay) {
+      shareModalOverlay.addEventListener('click', event => {
+        if (event.target === shareModalOverlay) {
+          closeShareModal();
+        }
+      });
+    }
+    copyShareLinkButton?.addEventListener('click', copyShareUrlToClipboard);
+    dismissShareButton?.addEventListener('click', closeShareModal);
+    closeShareDialogButton?.addEventListener('click', closeShareModal);
+
     const shortcutsModal = document.getElementById('shortcutsModal');
     const closeShortcutsButton = document.getElementById('closeModal');
     const helpMenu = document.getElementById('help-menu');
@@ -1896,6 +2030,8 @@ ${body}
       if (event.key === 'Escape') {
         if (openModalOverlay.classList.contains('active')) {
           closeOpenModal();
+        } else if (shareModalOverlay?.classList.contains('active')) {
+          closeShareModal();
         } else if (shortcutsModal.classList.contains('active')) {
           hideShortcuts();
         }
@@ -1905,8 +2041,11 @@ ${body}
     editor.addEventListener('blur', scheduleSave);
     updateDraftLabel();
     updateSavedNote();
-    window.addEventListener('load', () => {
-      restore();
+    window.addEventListener('load', async () => {
+      const sharedLoaded = await loadSharedContent();
+      if (!sharedLoaded) {
+        restore();
+      }
       focusEditor();
       updateStatus();
     });
