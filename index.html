@@ -130,6 +130,7 @@
       border-radius: 3px;
       font: inherit;
       cursor: pointer;
+      color: #111;
     }
 
     .menu-label:hover,
@@ -640,6 +641,10 @@
         min-width: 34px;
         min-height: 34px;
       }
+
+      .toolbar button[data-action="spell"] {
+        display: none;
+      }
       .menu-bar span:not(:nth-child(-n+4)):not(:last-child) {
         display: none;
       }
@@ -649,6 +654,10 @@
         height: 0;
         margin: 0;
         padding: 0;
+      }
+      .menu[data-menu="edit"],
+      .menu[data-menu="help"] {
+        display: none;
       }
       .editor-wrapper {
         padding: 4px 4px 4px 4px;
