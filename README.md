@@ -27,6 +27,9 @@ To run it locally, simply:
   collisions, and navigates to `index.html?d=<slug>`.
 - Markdown formatter button that converts `#` headings, `-` lists, and `**bold**`, `*italic*`, `` `code` ``
   markup into rich text blocks when requested.
+- AI assistant accessed with `Ctrl+K`: highlight text, enter an instruction plus passphrase-backed OpenAI
+  key (stored encrypted in `localStorage`), choose model/temperature, and replace the selection with
+  HTML returned by the model.
 - Share a rich-text draft via toolbar share button: text is compressed with LZ-String, prefills the editor
   when visiting `https://writer-98.com/?m=<payload>`, and exposes a modal with copyable URL.
 
