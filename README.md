@@ -35,6 +35,7 @@ To run it locally, simply:
   before hitting `max_output_tokens`, and a warning shows if truncation happened.
 - The web search flow also raises `max_output_tokens` to 1,200; if truncation still occurs you’ll see the
   warning so you can retry with a shorter selection.
+- The new toolbar wand button opens the AI assistant when text is selected, matching the `Ctrl+K` shortcut.
 - Share a rich-text draft via toolbar share button: text is compressed with LZ-String, prefills the editor
   when visiting `https://writer-98.com/?m=<payload>`, and exposes a modal with copyable URL.
 - Pasted images can be clicked to reveal a small inspector that lets you set precise width/height values or reset to their natural size.
