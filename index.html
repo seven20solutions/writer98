@@ -109,19 +109,71 @@
       display: flex;
       gap: 12px;
       padding: 6px 12px;
-      background: #dfe3ea;
+      background: #e0e0e0;
       font-size: 0.95rem;
       font-weight: 600;
       letter-spacing: 0.4px;
+      position: relative;
+      z-index: 2;
+      border-bottom: 2px solid #bdbdbd;
+      box-shadow: inset 0 0 0 1px #ffffff50;
     }
 
-    .menu-bar span {
+    .menu {
+      position: relative;
+    }
+
+    .menu-label {
+      background: transparent;
+      border: none;
       padding: 2px 6px;
       border-radius: 3px;
+      font: inherit;
+      cursor: pointer;
     }
 
-    .menu-bar span:hover {
+    .menu-label:hover,
+    .menu.open .menu-label {
       background: rgba(0,0,0,0.1);
+    }
+
+    .menu-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 180px;
+      background: #e0e0e0;
+      border: 2px solid #6c6a5c;
+      border-radius: 3px;
+      padding: 6px 0;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+      display: none;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .menu.open .menu-dropdown {
+      display: flex;
+    }
+
+    .menu-dropdown button {
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      padding: 4px 12px;
+      font: inherit;
+      cursor: pointer;
+      color: #111;
+    }
+
+    .menu-dropdown button:hover:not(:disabled) {
+      background: rgba(0,0,0,0.05);
+    }
+
+    .menu-dropdown button:disabled {
+      color: #999;
+      cursor: default;
     }
 
     .toolbar {
@@ -352,6 +404,40 @@
       padding: 4px 6px;
       font-size: 0.9rem;
       background: linear-gradient(180deg, #fff, #d1d1d1);
+    }
+
+    .embed-html-field,
+    .embed-image-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 0.75rem;
+    }
+
+    .embed-image-fields {
+      border-top: 1px solid #d1d1d1;
+      padding-top: 0.75rem;
+    }
+
+    .embed-image-fields.hidden {
+      display: none;
+    }
+
+    .embed-html-field.hidden {
+      display: none;
+    }
+
+    .embed-dimensions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .embed-dimensions label {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.75rem;
+      gap: 3px;
     }
 
     .ai-controls {
@@ -726,16 +812,63 @@
           <div class="control-dot"></div>
         </div>
       </div>
-      <div class="menu-bar">
-        <span>File</span>
-        <span>Edit</span>
-        <span>View</span>
-        <span>Insert</span>
-        <span>Format</span>
-        <span>Tools</span>
-        <span>Table</span>
-        <span>Window</span>
-        <span id="help-menu" style="cursor:pointer;">Help</span>
+      <div class="menu-bar" role="menubar">
+        <div class="menu" data-menu="file">
+          <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">File</button>
+          <div class="menu-dropdown" role="menu">
+            <button type="button" data-menu-action="new">New document</button>
+            <button type="button" data-menu-action="open">Open draft</button>
+            <button type="button" data-menu-action="save">Save draft</button>
+            <button type="button" data-menu-action="download">Download as RTF</button>
+            <button type="button" data-menu-action="print">Print document</button>
+          </div>
+        </div>
+        <div class="menu" data-menu="edit">
+          <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">Edit</button>
+          <div class="menu-dropdown" role="menu">
+            <button type="button" data-menu-action="undo">Undo</button>
+            <button type="button" data-menu-action="redo">Redo</button>
+            <button type="button" data-menu-action="cut">Cut</button>
+            <button type="button" data-menu-action="copy">Copy</button>
+          </div>
+        </div>
+        <div class="menu" data-menu="insert">
+          <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">Insert</button>
+          <div class="menu-dropdown" role="menu">
+            <button type="button" data-menu-action="page-break">Page break</button>
+            <button type="button" data-menu-action="embed">Embed</button>
+          </div>
+        </div>
+        <div class="menu" data-menu="format">
+          <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">Format</button>
+          <div class="menu-dropdown" role="menu">
+            <button type="button" data-menu-action="bold">Bold</button>
+            <button type="button" data-menu-action="italic">Italic</button>
+            <button type="button" data-menu-action="underline">Underline</button>
+            <button type="button" data-menu-action="align-left">Align left</button>
+            <button type="button" data-menu-action="align-center">Align center</button>
+            <button type="button" data-menu-action="align-right">Align right</button>
+            <button type="button" data-menu-action="bullet">Bulleted list</button>
+            <button type="button" data-menu-action="number">Numbered list</button>
+            <button type="button" data-menu-action="format-p">Paragraph</button>
+            <button type="button" data-menu-action="format-h1">Heading 1</button>
+            <button type="button" data-menu-action="format-h2">Heading 2</button>
+            <button type="button" data-menu-action="format-h3">Heading 3</button>
+          </div>
+        </div>
+        <div class="menu" data-menu="tools">
+          <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">Tools</button>
+          <div class="menu-dropdown" role="menu">
+            <button type="button" data-menu-action="ai">AI assistant</button>
+            <button type="button" data-menu-action="share">Share document</button>
+          </div>
+        </div>
+        <div class="menu" data-menu="help">
+          <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false" id="help-menu">Help</button>
+          <div class="menu-dropdown" role="menu">
+            <button type="button" data-menu-action="help">Keyboard shortcuts</button>
+          </div>
+        </div>
       </div>
       <div class="toolbar" aria-label="Formatting toolbar">
         <button data-action="new" title="New document (Ctrl+N)"><span class="icon"><i class="fa-solid fa-file" aria-hidden="true"></i></span></button>
@@ -916,6 +1049,48 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="embedModal" aria-hidden="true">
+    <div class="os9-modal" role="dialog" aria-modal="true" aria-labelledby="embedModalTitle">
+      <div class="modal-header">
+        <span id="embedModalTitle">Embed content</span>
+        <button type="button" id="closeEmbedModal" aria-label="Close embed dialog">x</button>
+      </div>
+      <div class="modal-body">
+        <form id="embedForm">
+          <label for="embedType">Insert</label>
+          <select id="embedType">
+            <option value="html">HTML snippet</option>
+            <option value="image">Image</option>
+          </select>
+          <div class="embed-html-field">
+            <label for="embedHtml">HTML snippet</label>
+            <textarea id="embedHtml" rows="4" placeholder="Paste your HTML snippet here"></textarea>
+          </div>
+          <div class="embed-image-fields" aria-hidden="true">
+            <label for="embedImageUrl">Image URL</label>
+            <input id="embedImageUrl" type="url" placeholder="https://example.com/image.jpg" />
+            <div class="embed-dimensions">
+              <label>
+                Width (px)
+                <input id="embedImageWidth" type="number" min="1" placeholder="auto" />
+              </label>
+              <label>
+                Height (px)
+                <input id="embedImageHeight" type="number" min="1" placeholder="auto" />
+              </label>
+            </div>
+            <small>Leave width/height blank to preserve the image's intrinsic size.</small>
+          </div>
+          <div class="modal-actions">
+            <button type="submit">Insert</button>
+            <button type="button" id="cancelEmbed">Cancel</button>
+          </div>
+          <div class="modal-warning" id="embedWarning"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <div class="image-inspector" id="imageInspector" aria-live="polite">
     <label for="imageWidth">W</label>
     <input id="imageWidth" type="number" min="16" max="2000" />
@@ -960,6 +1135,18 @@
     const aiNukeButton = document.getElementById('aiNuke');
     const aiCloseButton = document.getElementById('closeAiModal');
     const aiStatusText = document.getElementById('aiStatus');
+    const embedModalOverlay = document.getElementById('embedModal');
+    const embedForm = document.getElementById('embedForm');
+    const embedTypeSelect = document.getElementById('embedType');
+    const embedHtmlField = document.querySelector('.embed-html-field');
+    const embedHtmlInput = document.getElementById('embedHtml');
+    const embedImageFields = document.querySelector('.embed-image-fields');
+    const embedImageUrlInput = document.getElementById('embedImageUrl');
+    const embedImageWidthInput = document.getElementById('embedImageWidth');
+    const embedImageHeightInput = document.getElementById('embedImageHeight');
+    const embedWarning = document.getElementById('embedWarning');
+    const closeEmbedButton = document.getElementById('closeEmbedModal');
+    const cancelEmbedButton = document.getElementById('cancelEmbed');
 
     const querySlug = new URLSearchParams(window.location.search).get('d');
     const sharedMessage = new URLSearchParams(window.location.search).get('m');
@@ -1290,6 +1477,21 @@
       aiRange = null;
     };
 
+    const insertElementAtSelection = element => {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(element);
+        range.setStartAfter(element);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        editor.appendChild(element);
+      }
+    };
+
     const insertImageFromClipboard = src => {
       const img = document.createElement('img');
       img.src = src;
@@ -1297,18 +1499,7 @@
       img.style.height = 'auto';
       img.style.display = 'block';
       img.setAttribute('loading', 'lazy');
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount) {
-        const range = selection.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(img);
-        range.setStartAfter(img);
-        range.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      } else {
-        editor.appendChild(img);
-      }
+      insertElementAtSelection(img);
       flashNote('Image inserted');
       scheduleSave();
       showImageInspector(img);
@@ -2180,9 +2371,11 @@ ${body}
     const closeNewDocButton = document.getElementById('closeNewDoc');
     const cancelNewDocButton = document.getElementById('cancelNewDoc');
 
-    const showNewDocModal = () => {
+    let newDocIntent = 'new';
+    const showNewDocModal = intent => {
+      newDocIntent = intent || 'new';
       newDocWarning.textContent = '';
-      newDocInput.value = 'Untitled';
+      newDocInput.value = newDocIntent === 'save' && slugLabel !== 'Untitled' ? slugLabel : 'Untitled';
       newDocModalOverlay.classList.add('active');
       newDocModalOverlay.setAttribute('aria-hidden', 'false');
       setTimeout(() => newDocInput.focus(), 0);
@@ -2209,89 +2402,350 @@ ${body}
       const slug = name;
       const targetKey = `${docPrefix}${encodeURIComponent(slug)}`;
       const targetMeta = `${metaPrefix}${encodeURIComponent(slug)}`;
-      if (targetKey === storageKey) {
-        hideNewDocModal();
+      if (newDocIntent === 'new') {
+        if (targetKey === storageKey) {
+          hideNewDocModal();
+          return;
+        }
+        if (localStorage.getItem(targetKey)) {
+          const override = confirm(`A draft named “${name}” already exists. Overwrite it?`);
+          if (!override) return;
+        }
+        persist();
+        localStorage.setItem(targetKey, '<p><br></p>');
+        localStorage.setItem(targetMeta, JSON.stringify({ slug: name, saved: Date.now() }));
+        window.location.href = `${window.location.pathname}?d=${encodeURIComponent(slug)}`;
         return;
       }
-      if (localStorage.getItem(targetKey)) {
-        const override = confirm(`A draft named “${name}” already exists. Overwrite it?`);
-        if (!override) return;
-      }
+      // Save draft intent: copy current content into named draft and reset “untitled”
       persist();
-      localStorage.setItem(targetKey, '<p><br></p>');
+      const override = localStorage.getItem(targetKey)
+        ? confirm(`A draft named “${name}” already exists. Overwrite it?`)
+        : true;
+      if (!override) return;
+      const content = editor.innerHTML.trim() ? editor.innerHTML : '<p><br></p>';
+      localStorage.setItem(targetKey, content);
       localStorage.setItem(targetMeta, JSON.stringify({ slug: name, saved: Date.now() }));
+      localStorage.removeItem(storageKey);
+      localStorage.removeItem(metaKey);
+      flashNote(`Saved ${name}`);
+      hideNewDocModal();
       window.location.href = `${window.location.pathname}?d=${encodeURIComponent(slug)}`;
     });
 
-    document.querySelectorAll('.toolbar button').forEach(button => {
-      button.addEventListener('click', () => {
-        const action = button.dataset.action;
-        switch (action) {
-          case 'new':
-            showNewDocModal();
-            break;
-          case 'save':
-            persist();
-            copyDocument();
-            focusEditor();
-            break;
-          case 'download':
-            persist();
-            downloadDocument();
-            focusEditor();
-            break;
-          case 'open':
-            renderDraftList();
-            openModalOverlay.classList.add('active');
-            openModalOverlay.setAttribute('aria-hidden', 'false');
-            closeOpenButton.focus();
-            break;
-          case 'spell':
-            performSpellCheck();
-            break;
-          case 'print':
-            window.print();
-            break;
-          case 'share':
-            shareDocument();
-            break;
-          case 'page-break':
-            insertPageBreak();
-            break;
-          case 'bold':
-            document.execCommand('bold');
-            break;
-          case 'italic':
-            document.execCommand('italic');
-            break;
-          case 'underline':
-            document.execCommand('underline');
-            break;
-          case 'align-left':
-            document.execCommand('justifyLeft');
-            break;
-          case 'align-center':
-            document.execCommand('justifyCenter');
-            break;
-          case 'align-right':
-            document.execCommand('justifyRight');
-            break;
-          case 'bullet':
-            document.execCommand('insertUnorderedList');
-            break;
-          case 'number':
-            document.execCommand('insertOrderedList');
-            break;
-          case 'ai':
-            if (!aiToolbarButton?.disabled) {
-              handleAiShortcut();
-            }
-            break;
+    const runClipboardCommand = (command, message) => {
+      try {
+        const executed = document.execCommand(command);
+        if (executed) {
+          if (message) {
+            flashNote(message);
+          }
+        } else {
+          flashNote('Clipboard action unavailable');
         }
+      } catch (error) {
+        console.warn(`Clipboard ${command} failed`, error);
+        flashNote('Clipboard action blocked');
+      }
+    };
+
+    const performAppAction = async action => {
+      switch (action) {
+        case 'new':
+          showNewDocModal('new');
+          break;
+        case 'save':
+          showNewDocModal('save');
+          break;
+        case 'download':
+          persist();
+          downloadDocument();
+          break;
+        case 'open':
+          renderDraftList();
+          openModalOverlay.classList.add('active');
+          openModalOverlay.setAttribute('aria-hidden', 'false');
+          closeOpenButton.focus();
+          break;
+        case 'spell':
+          performSpellCheck();
+          break;
+        case 'print':
+          window.print();
+          break;
+        case 'share':
+          shareDocument();
+          break;
+        case 'page-break':
+          insertPageBreak();
+          break;
+        case 'bold':
+          document.execCommand('bold');
+          break;
+        case 'italic':
+          document.execCommand('italic');
+          break;
+        case 'underline':
+          document.execCommand('underline');
+          break;
+        case 'align-left':
+          document.execCommand('justifyLeft');
+          break;
+        case 'align-center':
+          document.execCommand('justifyCenter');
+          break;
+        case 'align-right':
+          document.execCommand('justifyRight');
+          break;
+        case 'bullet':
+          document.execCommand('insertUnorderedList');
+          break;
+        case 'number':
+          document.execCommand('insertOrderedList');
+          break;
+        case 'ai':
+          if (!aiToolbarButton?.disabled) {
+            handleAiShortcut();
+          }
+          break;
+        case 'undo':
+          document.execCommand('undo');
+          break;
+        case 'redo':
+          document.execCommand('redo');
+          break;
+        case 'cut':
+          runClipboardCommand('cut', 'Cut to clipboard');
+          break;
+        case 'copy':
+          runClipboardCommand('copy', 'Copied to clipboard');
+          break;
+        case 'embed':
+          openEmbedModal();
+          break;
+        case 'help':
+          openShortcuts();
+          break;
+        case 'format-p':
+          setFormatBlock('p');
+          break;
+        case 'format-h1':
+          setFormatBlock('h1');
+          break;
+        case 'format-h2':
+          setFormatBlock('h2');
+          break;
+        case 'format-h3':
+          setFormatBlock('h3');
+          break;
+        default:
+          console.warn(`Unhandled action: ${action}`);
+      }
+    };
+
+    document.querySelectorAll('.toolbar button').forEach(button => {
+      button.addEventListener('click', async () => {
+        if (button.disabled) return;
+        const action = button.dataset.action;
+        if (!action) return;
+        await performAppAction(action);
         focusEditor();
         updateStatus();
       });
     });
+
+    const editMenuButtons = {
+      undo: document.querySelector('[data-menu-action="undo"]'),
+      redo: document.querySelector('[data-menu-action="redo"]'),
+      cut: document.querySelector('[data-menu-action="cut"]'),
+      copy: document.querySelector('[data-menu-action="copy"]')
+    };
+
+    const updateEditMenuState = () => {
+      const selectionAvailable = hasEditorSelection();
+      if (editMenuButtons.undo) {
+        editMenuButtons.undo.disabled = !document.queryCommandEnabled('undo');
+      }
+      if (editMenuButtons.redo) {
+        editMenuButtons.redo.disabled = !document.queryCommandEnabled('redo');
+      }
+      if (editMenuButtons.cut) {
+        editMenuButtons.cut.disabled = !selectionAvailable;
+      }
+      if (editMenuButtons.copy) {
+        editMenuButtons.copy.disabled = !selectionAvailable;
+      }
+    };
+
+    const updateEmbedFieldVisibility = () => {
+      const isImage = embedTypeSelect?.value === 'image';
+      embedImageFields?.classList.toggle('hidden', !isImage);
+      embedHtmlField?.classList.toggle('hidden', isImage);
+      if (embedImageFields) {
+        embedImageFields.setAttribute('aria-hidden', (!isImage).toString());
+      }
+    };
+
+    const saveSelectionForEmbed = () => {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount) {
+        embedSelectionRange = selection.getRangeAt(0).cloneRange();
+      } else {
+        embedSelectionRange = null;
+      }
+    };
+
+    const openEmbedModal = () => {
+      saveSelectionForEmbed();
+      if (!embedModalOverlay) return;
+      embedWarning.textContent = '';
+      embedTypeSelect.value = 'html';
+      embedHtmlInput.value = '';
+      if (embedImageUrlInput) embedImageUrlInput.value = '';
+      if (embedImageWidthInput) embedImageWidthInput.value = '';
+      if (embedImageHeightInput) embedImageHeightInput.value = '';
+      updateEmbedFieldVisibility();
+      embedModalOverlay.classList.add('active');
+      embedModalOverlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => embedHtmlInput?.focus(), 0);
+    };
+
+    const closeEmbedModal = () => {
+      if (!embedModalOverlay) return;
+      embedModalOverlay.classList.remove('active');
+      embedModalOverlay.setAttribute('aria-hidden', 'true');
+      embedWarning.textContent = '';
+      focusEditor();
+    };
+
+    embedTypeSelect?.addEventListener('change', updateEmbedFieldVisibility);
+    closeEmbedButton?.addEventListener('click', closeEmbedModal);
+    cancelEmbedButton?.addEventListener('click', closeEmbedModal);
+    embedModalOverlay?.addEventListener('click', event => {
+      if (event.target === embedModalOverlay) {
+        closeEmbedModal();
+      }
+    });
+
+    embedForm?.addEventListener('submit', event => {
+      event.preventDefault();
+      const type = embedTypeSelect?.value || 'html';
+      if (type === 'image') {
+        const url = embedImageUrlInput?.value.trim();
+        if (!url) {
+          embedWarning.textContent = 'Enter an image URL.';
+          return;
+        }
+        const img = document.createElement('img');
+        img.src = url;
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        img.setAttribute('loading', 'lazy');
+        const widthValue = embedImageWidthInput?.value;
+        if (widthValue) {
+          const parsed = Number(widthValue);
+          if (!Number.isNaN(parsed) && parsed > 0) {
+            img.style.width = `${parsed}px`;
+          }
+        }
+        const heightValue = embedImageHeightInput?.value;
+        if (heightValue) {
+          const parsed = Number(heightValue);
+          if (!Number.isNaN(parsed) && parsed > 0) {
+            img.style.height = `${parsed}px`;
+          }
+        }
+        restoreEmbedSelection();
+        insertElementAtSelection(img);
+        flashNote('Image inserted');
+        scheduleSave();
+        showImageInspector(img);
+        closeEmbedModal();
+        focusEditor();
+        embedSelectionRange = null;
+        return;
+      }
+      const snippet = embedHtmlInput?.value.trim();
+      if (!snippet) {
+        embedWarning.textContent = 'Paste an HTML snippet to insert.';
+        return;
+      }
+      const targetRange = restoreEmbedSelection();
+      if (targetRange) {
+        const fragment = document.createRange().createContextualFragment(snippet);
+        const insertedNodes = Array.from(fragment.childNodes);
+        targetRange.deleteContents();
+        targetRange.insertNode(fragment);
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          const newRange = document.createRange();
+          if (insertedNodes.length) {
+            const lastNode = insertedNodes[insertedNodes.length - 1];
+            newRange.setStartAfter(lastNode);
+          } else {
+            newRange.setStart(targetRange.endContainer, targetRange.endOffset);
+          }
+          newRange.collapse(true);
+          selection.addRange(newRange);
+        }
+      } else {
+        document.execCommand('insertHTML', false, snippet);
+      }
+      flashNote('HTML inserted');
+      scheduleSave();
+      closeEmbedModal();
+      focusEditor();
+      embedSelectionRange = null;
+    });
+
+    const menus = document.querySelectorAll('.menu');
+    const closeMenus = () => {
+      menus.forEach(menu => {
+        menu.classList.remove('open');
+        const label = menu.querySelector('.menu-label');
+        if (label) {
+          label.setAttribute('aria-expanded', 'false');
+        }
+      });
+    };
+
+    menus.forEach(menu => {
+      const label = menu.querySelector('.menu-label');
+      label?.addEventListener('click', event => {
+        event.stopPropagation();
+        const isOpen = menu.classList.toggle('open');
+        label.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        menus.forEach(other => {
+          if (other !== menu) {
+            other.classList.remove('open');
+            const otherLabel = other.querySelector('.menu-label');
+            if (otherLabel) {
+              otherLabel.setAttribute('aria-expanded', 'false');
+            }
+          }
+        });
+      });
+      menu.addEventListener('click', event => {
+        event.stopPropagation();
+      });
+      menu.querySelectorAll('[data-menu-action]').forEach(item => {
+        item.addEventListener('click', async event => {
+          const menuAction = event.currentTarget.dataset.menuAction;
+          if (menuAction) {
+            await performAppAction(menuAction);
+            focusEditor();
+            updateStatus();
+          }
+          closeMenus();
+        });
+      });
+    });
+    document.addEventListener('click', closeMenus);
+
+    updateEditMenuState();
+
 
     document.getElementById('font-select').addEventListener('change', event => {
       document.execCommand('fontName', false, event.target.value);
@@ -2309,6 +2763,7 @@ ${body}
     editor.addEventListener('input', () => {
       scheduleSave();
       updateStatus();
+      updateEditMenuState();
       removeHighlight();
       spellQueue = [];
       currentSpellIndex = -1;
@@ -2350,6 +2805,7 @@ ${body}
     document.addEventListener('selectionchange', () => {
       updateStatus();
       updateAiToolbarState();
+      updateEditMenuState();
     });
 
     const repositionInspectorOnScroll = () => {
@@ -2585,6 +3041,34 @@ ${body}
       focusEditor();
     };
 
+    const insertTextAtSelection = text => {
+      if (!text) return;
+      const selection = window.getSelection();
+      const node = document.createTextNode(text);
+      if (selection && selection.rangeCount) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(node);
+        range.setStartAfter(node);
+        range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      editor.appendChild(node);
+    }
+  };
+
+    let embedSelectionRange = null;
+
+    const restoreEmbedSelection = () => {
+      if (!embedSelectionRange) return null;
+      const selection = window.getSelection();
+      if (!selection) return null;
+      selection.removeAllRanges();
+      selection.addRange(embedSelectionRange);
+      return embedSelectionRange;
+    };
+
     const openDraftKeys = () => Object.keys(localStorage).filter(key => key.startsWith(docPrefix));
 
     const decodeSlug = key => decodeURIComponent(key.slice(docPrefix.length));
@@ -2699,8 +3183,6 @@ ${body}
 
     const shortcutsModal = document.getElementById('shortcutsModal');
     const closeShortcutsButton = document.getElementById('closeModal');
-    const helpMenu = document.getElementById('help-menu');
-
     const openShortcuts = () => {
       shortcutsModal.classList.add('active');
       shortcutsModal.setAttribute('aria-hidden', 'false');
@@ -2713,7 +3195,6 @@ ${body}
       focusEditor();
     };
 
-    helpMenu.addEventListener('click', openShortcuts);
     closeShortcutsButton.addEventListener('click', hideShortcuts);
     shortcutsModal.addEventListener('click', event => {
       if (event.target === shortcutsModal) {
@@ -2732,6 +3213,7 @@ ${body}
         } else if (shortcutsModal.classList.contains('active')) {
           hideShortcuts();
         }
+        closeMenus();
       }
     });
 
