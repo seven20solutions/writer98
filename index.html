@@ -358,6 +358,9 @@
       display: flex;
       gap: 1rem;
       margin-top: 0.75rem;
+      }
+    .ai-control-hidden {
+      display: none !important;
     }
 
     .ai-controls > div {
@@ -383,6 +386,45 @@
 
     .ai-modal-body .loading {
       color: #0a5da5;
+    }
+
+    .image-inspector {
+      position: absolute;
+      display: none;
+      gap: 0.65rem;
+      align-items: center;
+      background: linear-gradient(180deg, #fff, #e6e6e6);
+      border: 1px solid #8a8a8a;
+      border-radius: 4px;
+      padding: 8px 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      z-index: 20;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+    }
+
+    .image-inspector label {
+      letter-spacing: 0.4px;
+      font-size: 0.7rem;
+      color: #333;
+      text-transform: uppercase;
+    }
+
+    .image-inspector input[type='number'] {
+      width: 72px;
+      border-radius: 3px;
+      border: 1px solid #7a7a7a;
+      padding: 4px;
+      font-size: 0.85rem;
+    }
+
+    .image-inspector button {
+      border: 1px solid #7a7a7a;
+      border-radius: 3px;
+      background: linear-gradient(180deg, #fff, #d1d1d1);
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 0.75rem;
     }
 
     .modal-actions {
@@ -841,18 +883,27 @@
         <input id="aiPassphrase" type="password" autocomplete="off" />
         <label for="aiInstruction">Instruction</label>
         <textarea id="aiInstruction" placeholder="Ask the assistant to rewrite, expand, or replace the selected text with HTML..."></textarea>
-        <div class="ai-controls">
+        <div class="ai-controls" id="temperatureControl">
           <div>
             <label for="aiModel">Model</label>
             <select id="aiModel">
-              <option value="gpt-4o-mini">gpt-4o-mini</option>
-              <option value="gpt-4">gpt-4</option>
-              <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+              <option value="gpt-4o-mini">gpt-4o-mini (default, fast)</option>
+              <option value="gpt-5-nano-2025-08-07">gpt-5-nano-2025-08-07 (web search capable)</option>
+              <option value="gpt-5-codex">gpt-5-codex (coding precision)</option>
             </select>
           </div>
           <div>
             <label for="aiTemperature">Temperature <span id="aiTempValue">0.7</span></label>
             <input id="aiTemperature" type="range" min="0" max="1" step="0.05" value="0.7" />
+          </div>
+        </div>
+        <div class="ai-controls" style="margin-top:0.25rem;">
+          <div style="flex-basis:100%; display:flex; flex-direction:column; gap:0.25rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <input type="checkbox" id="aiSearch" />
+              <label for="aiSearch" style="margin:0;">Enable Web Search</label>
+            </div>
+            <small style="color:#444;">Only available with gpt-5-nano-2025-08-07</small>
           </div>
         </div>
         <div class="modal-actions">
@@ -863,6 +914,14 @@
         <div class="modal-warning ai-status" id="aiStatus"></div>
       </div>
     </div>
+  </div>
+
+  <div class="image-inspector" id="imageInspector" aria-live="polite">
+    <label for="imageWidth">W</label>
+    <input id="imageWidth" type="number" min="16" max="2000" />
+    <label for="imageHeight">H</label>
+    <input id="imageHeight" type="number" min="16" max="2000" />
+    <button type="button" id="imageReset">Reset</button>
   </div>
 
       <script>
@@ -893,6 +952,8 @@
     const aiModelSelect = document.getElementById('aiModel');
     const aiTemperatureInput = document.getElementById('aiTemperature');
     const aiTempValue = document.getElementById('aiTempValue');
+    const aiSearchToggle = document.getElementById('aiSearch');
+    const temperatureControl = document.getElementById('temperatureControl');
     const aiGenerateButton = document.getElementById('aiGenerate');
     const aiCancelButton = document.getElementById('aiCancel');
     const aiNukeButton = document.getElementById('aiNuke');
@@ -925,6 +986,7 @@
     const aiKeyStorageKey = 'writer98-ai-encrypted';
     const aiModelStorageKey = 'writer98-ai-model';
     const aiTempStorageKey = 'writer98-ai-temperature';
+    const aiSearchStorageKey = 'writer98-ai-web-search';
     const textEncoder = new TextEncoder();
     const textDecoder = new TextDecoder();
     const arrayBufferToBase64 = buffer => btoa(String.fromCharCode(...new Uint8Array(buffer)));
@@ -1048,20 +1110,52 @@
       if (!aiModelSelect || !aiTemperatureInput || !aiTempValue) return;
       const storedModel = localStorage.getItem(aiModelStorageKey) || 'gpt-4o-mini';
       const storedTemp = localStorage.getItem(aiTempStorageKey) || '0.7';
+      const storedSearch = localStorage.getItem(aiSearchStorageKey) === 'true';
       aiModelSelect.value = storedModel;
       aiTemperatureInput.value = storedTemp;
-      aiTempValue.textContent = parseFloat(storedTemp).toFixed(2);
+      if (aiSearchToggle) {
+        aiSearchToggle.checked = storedSearch;
+      }
+      syncTemperatureControl();
     };
 
     aiTemperatureInput?.addEventListener('input', () => {
+      if (aiTemperatureInput.disabled) return;
       const value = aiTemperatureInput.value;
       aiTempValue.textContent = parseFloat(value).toFixed(2);
       localStorage.setItem(aiTempStorageKey, value);
     });
-
-    aiModelSelect?.addEventListener('change', () => {
-      localStorage.setItem(aiModelStorageKey, aiModelSelect.value);
+    aiSearchToggle?.addEventListener('change', () => {
+      localStorage.setItem(aiSearchStorageKey, aiSearchToggle.checked.toString());
     });
+
+    const syncTemperatureControl = () => {
+      if (!aiModelSelect || !aiTemperatureInput || !aiTempValue) return;
+      const model = aiModelSelect.value;
+      const isFourOMini = model === 'gpt-4o-mini';
+      aiTemperatureInput.disabled = !isFourOMini;
+      aiTempValue.textContent = isFourOMini
+        ? parseFloat(aiTemperatureInput.value).toFixed(2)
+        : '1.00';
+      if (!isFourOMini) {
+        aiTemperatureInput.value = '1';
+      }
+      if (temperatureControl) {
+        temperatureControl.classList.toggle('ai-control-hidden', !isFourOMini);
+      }
+      localStorage.setItem(aiModelStorageKey, model);
+      if (isFourOMini) {
+        localStorage.setItem(aiTempStorageKey, aiTemperatureInput.value);
+      }
+      if (aiSearchToggle) {
+        aiSearchToggle.disabled = model !== 'gpt-5-nano-2025-08-07';
+        if (aiSearchToggle.disabled) {
+          aiSearchToggle.checked = false;
+          localStorage.setItem(aiSearchStorageKey, 'false');
+        }
+      }
+    };
+    aiModelSelect?.addEventListener('change', syncTemperatureControl);
 
     const setAiModalLoading = loading => {
       aiModalLoading = loading;
@@ -1099,6 +1193,70 @@
       aiSelectionHtml = '';
     };
 
+    const imageInspector = document.getElementById('imageInspector');
+    const imageWidthInput = document.getElementById('imageWidth');
+    const imageHeightInput = document.getElementById('imageHeight');
+    const imageResetButton = document.getElementById('imageReset');
+    let activeImage = null;
+
+    const updateInspectorPosition = () => {
+      if (!imageInspector || !activeImage) return;
+      const rect = activeImage.getBoundingClientRect();
+      const inspectorWidth = imageInspector.offsetWidth;
+      const top = rect.bottom + window.scrollY + 8;
+      let left = rect.left + window.scrollX;
+      left = Math.min(left, window.innerWidth - inspectorWidth - 12 + window.scrollX);
+      left = Math.max(left, window.scrollX + 12);
+      imageInspector.style.top = `${top}px`;
+      imageInspector.style.left = `${left}px`;
+    };
+
+    const hideImageInspector = () => {
+      if (imageInspector) {
+        imageInspector.style.display = 'none';
+      }
+      activeImage = null;
+    };
+
+    const showImageInspector = img => {
+      if (!imageInspector) return;
+      activeImage = img;
+      const rect = img.getBoundingClientRect();
+      imageInspector.style.display = 'flex';
+      setTimeout(() => updateInspectorPosition(), 0);
+      imageWidthInput.value = Math.round(rect.width);
+      imageHeightInput.value = Math.round(rect.height);
+    };
+
+    const applyImageDimension = (dimension, value) => {
+      if (!activeImage || Number.isNaN(value)) return;
+      if (dimension === 'width') {
+        activeImage.style.width = `${value}px`;
+      } else if (dimension === 'height') {
+        activeImage.style.height = `${value}px`;
+      }
+      setTimeout(() => updateInspectorPosition(), 0);
+    };
+
+    imageWidthInput?.addEventListener('input', () => {
+      if (!imageWidthInput.value) return;
+      applyImageDimension('width', Number(imageWidthInput.value));
+    });
+
+    imageHeightInput?.addEventListener('input', () => {
+      if (!imageHeightInput.value) return;
+      applyImageDimension('height', Number(imageHeightInput.value));
+    });
+
+    imageResetButton?.addEventListener('click', () => {
+      if (!activeImage) return;
+      activeImage.style.width = '';
+      activeImage.style.height = '';
+      const rect = activeImage.getBoundingClientRect();
+      imageWidthInput.value = Math.round(rect.width);
+      imageHeightInput.value = Math.round(rect.height);
+    });
+
     const stripCodeFence = text => {
       if (!text) return text;
       const fenceMatch = text.match(/^```(?:html)?\n([\s\S]*?)```$/i);
@@ -1129,6 +1287,30 @@
         selection.addRange(newRange);
       }
       aiRange = null;
+    };
+
+    const insertImageFromClipboard = src => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+      img.style.display = 'block';
+      img.setAttribute('loading', 'lazy');
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(img);
+        range.setStartAfter(img);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        editor.appendChild(img);
+      }
+      flashNote('Image inserted');
+      scheduleSave();
+      showImageInspector(img);
     };
 
     const handleAiShortcut = () => {
@@ -1194,26 +1376,52 @@
         return;
       }
       const model = aiModelSelect?.value || 'gpt-4o-mini';
-      const temperature = Number(aiTemperatureInput?.value) || 0.7;
-      localStorage.setItem(aiModelStorageKey, model);
-      localStorage.setItem(aiTempStorageKey, temperature.toString());
+      const isFourOMini = model === 'gpt-4o-mini';
+      const rawTempValue = Number(aiTemperatureInput?.value);
+      const temperature = isFourOMini && !Number.isNaN(rawTempValue) ? rawTempValue : undefined;
       setAiModalLoading(true);
       try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        const isNano = model === 'gpt-5-nano-2025-08-07';
+        const searchEnabled = isNano && aiSearchToggle?.checked;
+        const reasoningMap = {
+          'gpt-5-codex': 'high'
+        };
+        let effort = reasoningMap[model];
+        if (isNano) {
+          effort = searchEnabled ? 'low' : 'minimal';
+        }
+        const maxOutput = searchEnabled ? 1200 : 600;
+        const selectionLimit = 1200;
+        const selectionPayload = searchEnabled && aiSelectionHtml.length > selectionLimit
+          ? aiSelectionHtml.slice(0, selectionLimit)
+          : aiSelectionHtml;
+        if (searchEnabled && aiSelectionHtml.length > selectionLimit) {
+          aiStatusText.textContent = 'Selection truncated for web search (first 1,200 characters used).';
+        }
+        const requestBody = {
+          model,
+          input: [
+            { role: 'system', content: 'You are a helpful assistant that should remain silent except for returning the precise HTML fragment requested, with no markdown wrappers or additional text—only the raw HTML required to replace the selection.' },
+            { role: 'user', content: `Instruction: ${instruction}\nSelected HTML:\n${selectionPayload}` }
+          ],
+          max_output_tokens: maxOutput
+        };
+        if (temperature !== undefined) {
+          requestBody.temperature = temperature;
+        }
+        if (effort) {
+          requestBody.reasoning = { effort };
+        }
+        if (aiSearchToggle?.checked) {
+          requestBody.tools = [{ type: 'web_search' }];
+        }
+        const response = await fetch('https://api.openai.com/v1/responses', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${apiKeyValue}`
           },
-          body: JSON.stringify({
-            model,
-            temperature,
-            max_tokens: 600,
-            messages: [
-            { role: 'system', content: 'You are a helpful assistant that should remain silent except for returning the precise HTML fragment requested, with no markdown wrappers or additional text—only the raw HTML required to replace the selection.' },
-              { role: 'user', content: `Instruction: ${instruction}\nSelected HTML:\n${aiSelectionHtml}` }
-            ]
-          })
+          body: JSON.stringify(requestBody)
         });
         if (!response.ok) {
           const failure = await response.text();
@@ -1227,13 +1435,42 @@
           return;
         }
         const data = await response.json();
-        const assistantOutput = data?.choices?.[0]?.message?.content?.trim();
-        if (!assistantOutput) {
-          aiStatusText.textContent = 'AI returned no content. Try again.';
+        const normalizeChunk = chunk => {
+          if (!chunk) return '';
+          if (chunk.type === 'output_text' && typeof chunk.text === 'string') {
+            return chunk.text;
+          }
+          if (typeof chunk.text === 'string') {
+            return chunk.text;
+          }
+          if (typeof chunk === 'string') {
+            return chunk;
+          }
+          return '';
+        };
+        const outputEntries = Array.isArray(data?.output) ? data.output : [];
+        const contentItems = outputEntries.flatMap(entry => entry?.content || []);
+        const assistantOutput = contentItems
+          .map(item => normalizeChunk(item))
+          .filter(Boolean)
+          .join('\n')
+          .trim();
+        const fallbackOutput = data?.output_text?.trim?.();
+        const finalOutput = assistantOutput || fallbackOutput || '';
+        if (!finalOutput) {
+          const incompleteReason = data?.incomplete_details?.reason;
+          if (incompleteReason === 'max_output_tokens') {
+            console.debug('AI response truncated:', data);
+            aiStatusText.textContent =
+              'AI hit max_output_tokens (1,200) while web search was active; try again with a shorter selection.';
+          } else {
+            console.debug('AI responded with no content:', data);
+            aiStatusText.textContent = 'AI returned no content. Try again.';
+          }
           setAiModalLoading(false);
           return;
         }
-        replaceSelectionWithHtml(assistantOutput);
+        replaceSelectionWithHtml(finalOutput);
         scheduleSave();
         updateStatus();
         flashNote('AI response applied');
@@ -2060,9 +2297,49 @@ ${body}
       spellContent.innerHTML = '';
     });
 
+    editor.addEventListener('click', event => {
+      if (event.target && event.target.tagName === 'IMG') {
+        showImageInspector(event.target);
+        return;
+      }
+      hideImageInspector();
+    });
+    document.addEventListener('click', event => {
+      if (!imageInspector || imageInspector.contains(event.target) || (event.target && event.target.tagName === 'IMG')) {
+        return;
+      }
+      hideImageInspector();
+    });
+
+    document.addEventListener('paste', event => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+      const imageItem = Array.from(items).find(item => item.type.startsWith('image/'));
+      if (!imageItem) return;
+      event.preventDefault();
+      const file = imageItem.getAsFile();
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = loadEvent => {
+        const src = loadEvent.target?.result;
+        if (typeof src === 'string') {
+          insertImageFromClipboard(src);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
     document.addEventListener('selectionchange', () => {
       updateStatus();
     });
+
+    const repositionInspectorOnScroll = () => {
+      if (activeImage) {
+        updateInspectorPosition();
+      }
+    };
+    window.addEventListener('scroll', repositionInspectorOnScroll, true);
+    window.addEventListener('resize', repositionInspectorOnScroll);
 
     document.addEventListener('keydown', event => {
       refreshLockIndicators(event);

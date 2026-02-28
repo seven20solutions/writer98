@@ -28,10 +28,16 @@ To run it locally, simply:
 - Markdown formatter button that converts `#` headings, `-` lists, and `**bold**`, `*italic*`, `` `code` ``
   markup into rich text blocks when requested.
 - AI assistant accessed with `Ctrl+K`: highlight text, enter an instruction plus passphrase-backed OpenAI
-  key (stored encrypted in `localStorage`), choose model/temperature, and replace the selection with
-  HTML returned by the model.
+  key (stored encrypted in `localStorage`), choose model/temperature, and optionally enable a Web Search
+  tool when using `gpt-5-nano-2025-08-07`. The default is still `gpt-4o-mini`, while `gpt-5-nano-2025-08-07`
+  and `gpt-5-codex` talk to the newer Responses API without custom temperature control.
+- When web search is in play the selection is trimmed to the first 1,200 characters so the model finishes
+  before hitting `max_output_tokens`, and a warning shows if truncation happened.
+- The web search flow also raises `max_output_tokens` to 1,200; if truncation still occurs you’ll see the
+  warning so you can retry with a shorter selection.
 - Share a rich-text draft via toolbar share button: text is compressed with LZ-String, prefills the editor
   when visiting `https://writer-98.com/?m=<payload>`, and exposes a modal with copyable URL.
+- Pasted images can be clicked to reveal a small inspector that lets you set precise width/height values or reset to their natural size.
 
 ### Getting started
 
