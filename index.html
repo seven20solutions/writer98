@@ -2278,6 +2278,30 @@ ${body}
     let keyboardOpen = false;
     let baseViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
 
+    const resetStickyToolbarVars = () => {
+      document.body.style.removeProperty('--mobile-toolbars-height');
+      document.body.style.removeProperty('--mobile-task-toolbar-top');
+    };
+
+    const updateStickyToolbars = () => {
+      if (window.innerWidth > 800 || !toolbar) {
+        document.body.classList.remove('mobile-toolbars-fixed');
+        resetStickyToolbarVars();
+        return;
+      }
+      const shouldStick = window.scrollY > 0 || keyboardOpen;
+      if (shouldStick) {
+        const toolbarHeight = Math.round(toolbar.getBoundingClientRect().height);
+        const taskHeight = mobileTaskToolbar ? Math.round(mobileTaskToolbar.getBoundingClientRect().height) : 0;
+        document.body.style.setProperty('--mobile-task-toolbar-top', `${toolbarHeight}px`);
+        document.body.style.setProperty('--mobile-toolbars-height', `${toolbarHeight + taskHeight}px`);
+        document.body.classList.add('mobile-toolbars-fixed');
+      } else {
+        document.body.classList.remove('mobile-toolbars-fixed');
+        resetStickyToolbarVars();
+      }
+    };
+
     const updateKeyboardState = () => {
       if (!window.visualViewport) return;
       const delta = baseViewportHeight - window.visualViewport.height;
@@ -2289,6 +2313,7 @@ ${body}
         }
         keyboardOpen = show;
       }
+      updateStickyToolbars();
     };
 
     const handleMobileChrome = () => {
@@ -2305,28 +2330,6 @@ ${body}
         isChromeCollapsed = false;
       }
       updateKeyboardState();
-    };
-    const resetStickyToolbarVars = () => {
-      document.body.style.removeProperty('--mobile-toolbars-height');
-      document.body.style.removeProperty('--mobile-task-toolbar-top');
-    };
-
-    const updateStickyToolbars = () => {
-      if (window.innerWidth > 800 || !toolbar) {
-        document.body.classList.remove('mobile-toolbars-fixed');
-        resetStickyToolbarVars();
-        return;
-      }
-      if (window.scrollY > 0) {
-        const toolbarHeight = Math.round(toolbar.getBoundingClientRect().height);
-        const taskHeight = mobileTaskToolbar ? Math.round(mobileTaskToolbar.getBoundingClientRect().height) : 0;
-        document.body.style.setProperty('--mobile-task-toolbar-top', `${toolbarHeight}px`);
-        document.body.style.setProperty('--mobile-toolbars-height', `${toolbarHeight + taskHeight}px`);
-        document.body.classList.add('mobile-toolbars-fixed');
-      } else {
-        document.body.classList.remove('mobile-toolbars-fixed');
-        resetStickyToolbarVars();
-      }
     };
     window.addEventListener('scroll', handleMobileChrome, { passive: true });
     window.addEventListener('resize', handleMobileChrome);
