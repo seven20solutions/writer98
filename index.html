@@ -16,7 +16,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#63639c" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <style>
+    <style>
     :root {
       color-scheme: light;
       --frame-base: #c7c7c7;
@@ -147,7 +147,7 @@
       position: absolute;
       top: calc(100% + 6px);
       left: 0;
-      min-width: 180px;
+      min-width: 230px;
       background: #e0e0e0;
       border: 2px solid #6c6a5c;
       border-radius: 3px;
@@ -171,6 +171,27 @@
       font: inherit;
       cursor: pointer;
       color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .menu-divider {
+      border-top: 1px solid rgba(0, 0, 0, 0.12);
+      margin: 3px 0;
+    }
+
+    .menu-option {
+      flex: 1;
+    }
+
+    .menu-shortcut {
+      font-size: 0.68rem;
+      color: #555;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      white-space: nowrap;
     }
 
     .menu-dropdown button:hover:not(:disabled) {
@@ -276,12 +297,68 @@
       box-shadow: inset 0 0 0 1px #1b71d7, 0 0 0 2px rgba(27,113,215,.3);
     }
 
+    .task-list {
+      list-style: none;
+      margin: 1.2rem 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .task-list-item {
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
+      background: linear-gradient(180deg, #ffffff, #f7f8ff);
+      border: 1px solid rgba(12, 93, 165, 0.35);
+      display: flex;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+      transition: border 0.2s ease;
+    }
+
+    .task-list-item:focus-within {
+      border-color: rgba(12, 93, 165, 0.8);
+      box-shadow: 0 0 0 2px rgba(12, 93, 165, 0.25);
+    }
+
+    .task-label {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Segoe UI', 'Segoe', sans-serif;
+      color: #1f1f1f;
+      font-size: 0.95rem;
+    }
+
+    .task-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: #0c5da5;
+      border-radius: 3px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .task-text {
+      flex: 1;
+      min-height: 1.2rem;
+      line-height: 1.4;
+      outline: none;
+    }
+
+    .task-text:empty::before {
+      content: '\200B';
+    }
+
     .page-break-marker {
       border: none;
       border-top: 1px dashed rgba(0, 0, 0, 0.4);
       margin: 1.5rem 0;
       height: 0;
       background: transparent;
+      page-break-after: always;
+      page-break-before: always;
     }
 
       .status-bar {
@@ -830,44 +907,61 @@
         <div class="menu" data-menu="file">
           <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">File</button>
           <div class="menu-dropdown" role="menu">
-            <button type="button" data-menu-action="new">New document</button>
-            <button type="button" data-menu-action="open">Open draft</button>
-            <button type="button" data-menu-action="save">Save draft</button>
-            <button type="button" data-menu-action="download">Download as RTF</button>
-            <button type="button" data-menu-action="print">Print document</button>
+            <button type="button" data-menu-action="new"><span class="menu-option">New doc</span><span class="menu-shortcut">CTRL+N</span></button>
+            <button type="button" data-menu-action="open"><span class="menu-option">Open draft</span></button>
+            <div class="menu-divider" role="presentation"></div>
+            <button type="button" data-menu-action="save"><span class="menu-option">Save draft</span><span class="menu-shortcut">CTRL+S</span></button>
+            <button type="button" data-menu-action="download"><span class="menu-option">Download (RTF)</span></button>
+            <button type="button" data-menu-action="download-html"><span class="menu-option">Download (HTML)</span></button>
+            <button type="button" data-menu-action="download-pdf"><span class="menu-option">Download (PDF)</span></button>
+            <button type="button" data-menu-action="export-all"><span class="menu-option">Export All</span></button>
+            <button type="button" data-menu-action="print"><span class="menu-option">Print</span><span class="menu-shortcut">CTRL+P</span></button>
           </div>
         </div>
         <div class="menu" data-menu="edit">
           <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">Edit</button>
           <div class="menu-dropdown" role="menu">
-            <button type="button" data-menu-action="undo">Undo</button>
-            <button type="button" data-menu-action="redo">Redo</button>
-            <button type="button" data-menu-action="cut">Cut</button>
-            <button type="button" data-menu-action="copy">Copy</button>
+            <button type="button" data-menu-action="undo"><span class="menu-option">Undo</span></button>
+            <button type="button" data-menu-action="redo"><span class="menu-option">Redo</span></button>
+            <div class="menu-divider" role="presentation"></div>
+            <button type="button" data-menu-action="cut"><span class="menu-option">Cut</span><span class="menu-shortcut">CTRL+X</span></button>
+            <button type="button" data-menu-action="copy"><span class="menu-option">Copy</span><span class="menu-shortcut">CTRL+C</span></button>
+            <div class="menu-divider" role="presentation"></div>
+            <button type="button" data-menu-action="move-list-up"><span class="menu-option">Move up</span><span class="menu-shortcut">CTRL+SHIFT+↑</span></button>
+            <button type="button" data-menu-action="move-list-down"><span class="menu-option">Move down</span><span class="menu-shortcut">CTRL+SHIFT+↓</span></button>
+            <button type="button" data-menu-action="duplicate-list-item"><span class="menu-option">Duplicate</span><span class="menu-shortcut">CTRL+SHIFT+D</span></button>
+            <button type="button" data-menu-action="remove-list-item"><span class="menu-option">Remove</span><span class="menu-shortcut">CTRL+SHIFT+DEL</span></button>
           </div>
         </div>
         <div class="menu" data-menu="insert">
           <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">Insert</button>
           <div class="menu-dropdown" role="menu">
-            <button type="button" data-menu-action="page-break">Page break</button>
-            <button type="button" data-menu-action="embed">Embed</button>
+            <button type="button" data-menu-action="page-break"><span class="menu-option">Page break</span><span class="menu-shortcut">CTRL+SHIFT+-</span></button>
+            <button type="button" data-menu-action="embed"><span class="menu-option">Embed</span></button>
+            <button type="button" data-menu-action="task"><span class="menu-option">Task</span><span class="menu-shortcut">CTRL+SHIFT+T</span></button>
           </div>
         </div>
         <div class="menu" data-menu="format">
           <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">Format</button>
           <div class="menu-dropdown" role="menu">
-            <button type="button" data-menu-action="bold">Bold</button>
-            <button type="button" data-menu-action="italic">Italic</button>
-            <button type="button" data-menu-action="underline">Underline</button>
-            <button type="button" data-menu-action="align-left">Align left</button>
-            <button type="button" data-menu-action="align-center">Align center</button>
-            <button type="button" data-menu-action="align-right">Align right</button>
-            <button type="button" data-menu-action="bullet">Bulleted list</button>
-            <button type="button" data-menu-action="number">Numbered list</button>
-            <button type="button" data-menu-action="format-p">Paragraph</button>
-            <button type="button" data-menu-action="format-h1">Heading 1</button>
-            <button type="button" data-menu-action="format-h2">Heading 2</button>
-            <button type="button" data-menu-action="format-h3">Heading 3</button>
+            <button type="button" data-menu-action="bold"><span class="menu-option">Bold</span><span class="menu-shortcut">CTRL+B</span></button>
+            <button type="button" data-menu-action="italic"><span class="menu-option">Italic</span><span class="menu-shortcut">CTRL+I</span></button>
+            <button type="button" data-menu-action="underline"><span class="menu-option">Underline</span><span class="menu-shortcut">CTRL+U</span></button>
+            <div class="menu-divider" role="presentation"></div>
+            <button type="button" data-menu-action="align-left"><span class="menu-option">Align left</span><span class="menu-shortcut">CTRL+L</span></button>
+            <button type="button" data-menu-action="align-center"><span class="menu-option">Align center</span><span class="menu-shortcut">CTRL+E</span></button>
+            <button type="button" data-menu-action="align-right"><span class="menu-option">Align right</span><span class="menu-shortcut">CTRL+R</span></button>
+            <div class="menu-divider" role="presentation"></div>
+            <button type="button" data-menu-action="bullet"><span class="menu-option">Bulleted</span><span class="menu-shortcut">CTRL+SHIFT+8</span></button>
+            <button type="button" data-menu-action="number"><span class="menu-option">Numbered</span><span class="menu-shortcut">CTRL+SHIFT+7</span></button>
+            <div class="menu-divider" role="presentation"></div>
+            <button type="button" data-menu-action="format-p"><span class="menu-option">Paragraph</span><span class="menu-shortcut">CTRL+ALT+P</span></button>
+            <button type="button" data-menu-action="format-h1"><span class="menu-option">Heading 1</span><span class="menu-shortcut">CTRL+1</span></button>
+            <button type="button" data-menu-action="format-h2"><span class="menu-option">Heading 2</span><span class="menu-shortcut">CTRL+2</span></button>
+            <button type="button" data-menu-action="format-h3"><span class="menu-option">Heading 3</span><span class="menu-shortcut">CTRL+3</span></button>
+            <div class="menu-divider" role="presentation"></div>
+            <button type="button" data-menu-action="clear-all"><span class="menu-option">Clear all</span><span class="menu-shortcut">CTRL+SHIFT+X</span></button>
+            <button type="button" data-menu-action="remove-formatting"><span class="menu-option">Remove formatting</span><span class="menu-shortcut">CTRL+SHIFT+M</span></button>
           </div>
         </div>
         <div class="menu" data-menu="tools">
@@ -1113,7 +1207,10 @@
     <button type="button" id="imageReset">Reset</button>
   </div>
 
-      <script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
     const docPrefix = 'writer98-doc-';
     const metaPrefix = 'writer98-meta-';
     const editor = document.getElementById('editor');
@@ -1164,6 +1261,8 @@
 
     const querySlug = new URLSearchParams(window.location.search).get('d');
     const sharedMessage = new URLSearchParams(window.location.search).get('m');
+    const rawMessage = new URLSearchParams(window.location.search).get('raw');
+    const rawAppend = new URLSearchParams(window.location.search).get('append');
     const activeSlug = querySlug ? querySlug : 'untitled';
     const slugLabel = formatLabel(activeSlug);
     const storageKey = `${docPrefix}${encodeURIComponent(activeSlug)}`;
@@ -1184,6 +1283,22 @@
     };
     const ensureEditorContent = html =>
       typeof html === 'string' && html.trim() ? html : '<p><br></p>';
+    const escapeHtml = raw => {
+      const div = document.createElement('div');
+      div.textContent = raw || '';
+      return div.innerHTML;
+    };
+    const formatRawPayload = raw => {
+      if (!raw) return '<p><br></p>';
+      const escaped = escapeHtml(raw);
+      const withBreaks = escaped.replace(/\r?\n/g, '<br>');
+      return `<p>${withBreaks}</p>`;
+    };
+    const TASK_LIST_CLASS = 'task-list';
+    const TASK_ITEM_CLASS = 'task-list-item';
+    const TASK_LABEL_CLASS = 'task-label';
+    const TASK_CHECKBOX_CLASS = 'task-checkbox';
+    const TASK_TEXT_CLASS = 'task-text';
 
     const aiKeyStorageKey = 'writer98-ai-encrypted';
     const aiModelStorageKey = 'writer98-ai-model';
@@ -2067,6 +2182,167 @@ ${body}
       statusWords.textContent = `Words ${wordCount}`;
     };
 
+    const BLOCK_TAGS = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'LI', 'UL', 'OL']);
+    const findBlockContainer = node => {
+      let current = node;
+      if (!current) return null;
+      if (current.nodeType === Node.TEXT_NODE) {
+        current = current.parentElement;
+      }
+      while (current && current !== editor && current.nodeType === Node.ELEMENT_NODE && !BLOCK_TAGS.has(current.tagName)) {
+        current = current.parentElement;
+      }
+      return current || null;
+    };
+
+    const findTaskList = node => {
+      if (!node) return null;
+      let current = node;
+      if (current.nodeType === Node.TEXT_NODE) {
+        current = current.parentElement;
+      }
+      if (!current) return null;
+      return current.closest(`ul.${TASK_LIST_CLASS}`);
+    };
+
+    const getListItemAtSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return null;
+      const range = selection.getRangeAt(0);
+      let node = range.commonAncestorContainer;
+      if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+      if (!node || !editor.contains(node)) return null;
+      return node.closest(`li.${TASK_ITEM_CLASS}`);
+    };
+
+    const placeCaretInsideElement = element => {
+      if (!element) return;
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      range.collapse(true);
+      const selection = window.getSelection();
+      if (!selection) return;
+      selection.removeAllRanges();
+      selection.addRange(range);
+    };
+
+    const focusTaskText = span => {
+      if (!span) {
+        focusEditor();
+        return;
+      }
+      placeCaretInsideElement(span);
+      focusEditor();
+    };
+
+    const createTaskListItemElements = () => {
+      const li = document.createElement('li');
+      li.className = TASK_ITEM_CLASS;
+      const label = document.createElement('label');
+      label.className = TASK_LABEL_CLASS;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = TASK_CHECKBOX_CLASS;
+      const span = document.createElement('span');
+      span.className = TASK_TEXT_CLASS;
+      label.appendChild(checkbox);
+      label.appendChild(span);
+      li.appendChild(label);
+      return { li, span };
+    };
+
+    const ensureParagraphAfterList = list => {
+      if (!list || !list.parentElement) return;
+      const next = list.nextElementSibling;
+      if (next && next.tagName === 'P') return;
+      const paragraph = document.createElement('p');
+      paragraph.innerHTML = '<br>';
+      list.parentElement.insertBefore(paragraph, list.nextSibling);
+    };
+
+    const insertTask = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      const range = selection.getRangeAt(0);
+      const currentItem = getListItemAtSelection();
+      let list = currentItem?.closest(`ul.${TASK_LIST_CLASS}`) || findTaskList(range.startContainer) || findTaskList(range.commonAncestorContainer);
+      if (!list) {
+        list = document.createElement('ul');
+        list.className = TASK_LIST_CLASS;
+        const block = findBlockContainer(range.startContainer);
+        const parentForList = block === editor ? editor : block?.parentElement || editor;
+        if (!block || block === editor) {
+          parentForList.appendChild(list);
+        } else {
+          parentForList.insertBefore(list, block.nextSibling);
+        }
+      }
+      const { li, span } = createTaskListItemElements();
+      if (currentItem && currentItem.parentElement === list) {
+        currentItem.insertAdjacentElement('afterend', li);
+      } else {
+        list.appendChild(li);
+      }
+      ensureParagraphAfterList(list);
+      focusTaskText(span);
+      flashNote('Task added');
+      scheduleSave();
+      updateStatus();
+      updateEditMenuState();
+    };
+
+    const moveListItem = direction => {
+      const item = getListItemAtSelection();
+      if (!item) return;
+      const parent = item.parentElement;
+      if (!parent) return;
+      const sibling = direction === 'up' ? item.previousElementSibling : item.nextElementSibling;
+      if (!sibling) return;
+      const reference = direction === 'up' ? sibling : sibling.nextElementSibling;
+      parent.insertBefore(item, reference);
+      focusTaskText(item.querySelector(`.${TASK_TEXT_CLASS}`));
+      flashNote(direction === 'up' ? 'Task moved up' : 'Task moved down');
+      scheduleSave();
+      updateStatus();
+      updateEditMenuState();
+    };
+
+    const duplicateListItem = () => {
+      const item = getListItemAtSelection();
+      if (!item) return;
+      const clone = item.cloneNode(true);
+      const span = clone.querySelector(`.${TASK_TEXT_CLASS}`);
+      item.insertAdjacentElement('afterend', clone);
+      focusTaskText(span);
+      flashNote('Task duplicated');
+      scheduleSave();
+      updateStatus();
+      updateEditMenuState();
+    };
+
+    const removeListItem = () => {
+      const item = getListItemAtSelection();
+      if (!item) return;
+      const parent = item.parentElement;
+      const nextItem = item.nextElementSibling;
+      const prevItem = item.previousElementSibling;
+      item.remove();
+      if (parent && parent.children.length === 0) {
+        parent.remove();
+        focusEditor();
+      } else if (nextItem) {
+        focusTaskText(nextItem.querySelector(`.${TASK_TEXT_CLASS}`));
+      } else if (prevItem) {
+        focusTaskText(prevItem.querySelector(`.${TASK_TEXT_CLASS}`));
+      } else {
+        focusEditor();
+      }
+      flashNote('Task removed');
+      scheduleSave();
+      updateStatus();
+      updateEditMenuState();
+    };
+
     const dictionaryUrl = 'https://cdn.jsdelivr.net/npm/spell-checker-js@1.2.6/dictionaries/en/english.txt';
     const userDictionaryKey = 'writer98-user-dictionary';
     const loadUserDictionary = () => {
@@ -2475,6 +2751,18 @@ ${body}
           persist();
           downloadDocument();
           break;
+        case 'download-html':
+          persist();
+          downloadHtmlDocument();
+          break;
+        case 'export-all':
+          persist();
+          await exportAllDocuments();
+          break;
+        case 'download-pdf':
+          persist();
+          downloadPdfDocument();
+          break;
         case 'open':
           renderDraftList();
           openModalOverlay.classList.add('active');
@@ -2537,6 +2825,21 @@ ${body}
         case 'embed':
           openEmbedModal();
           break;
+        case 'task':
+          insertTask();
+          break;
+        case 'move-list-up':
+          moveListItem('up');
+          break;
+        case 'move-list-down':
+          moveListItem('down');
+          break;
+        case 'duplicate-list-item':
+          duplicateListItem();
+          break;
+        case 'remove-list-item':
+          removeListItem();
+          break;
         case 'help':
           openShortcuts();
           break;
@@ -2551,6 +2854,17 @@ ${body}
           break;
         case 'format-h3':
           setFormatBlock('h3');
+          break;
+        case 'clear-all':
+          editor.innerHTML = '<p></p>';
+          scheduleSave();
+          flashNote('Document cleared');
+          break;
+        case 'remove-formatting':
+          document.execCommand('removeFormat');
+          setFormatBlock('p');
+          scheduleSave();
+          flashNote('Formatting removed');
           break;
         default:
           console.warn(`Unhandled action: ${action}`);
@@ -2572,7 +2886,11 @@ ${body}
       undo: document.querySelector('[data-menu-action="undo"]'),
       redo: document.querySelector('[data-menu-action="redo"]'),
       cut: document.querySelector('[data-menu-action="cut"]'),
-      copy: document.querySelector('[data-menu-action="copy"]')
+      copy: document.querySelector('[data-menu-action="copy"]'),
+      moveUp: document.querySelector('[data-menu-action="move-list-up"]'),
+      moveDown: document.querySelector('[data-menu-action="move-list-down"]'),
+      duplicate: document.querySelector('[data-menu-action="duplicate-list-item"]'),
+      remove: document.querySelector('[data-menu-action="remove-list-item"]')
     };
 
     const updateEditMenuState = () => {
@@ -2589,6 +2907,12 @@ ${body}
       if (editMenuButtons.copy) {
         editMenuButtons.copy.disabled = !selectionAvailable;
       }
+      const hasTaskListSelection = Boolean(getListItemAtSelection());
+      ['moveUp', 'moveDown', 'duplicate', 'remove'].forEach(key => {
+        if (editMenuButtons[key]) {
+          editMenuButtons[key].disabled = !hasTaskListSelection;
+        }
+      });
     };
 
     const updateEmbedFieldVisibility = () => {
@@ -2816,6 +3140,150 @@ ${body}
       reader.readAsDataURL(file);
     });
 
+    const insertPlainText = text => {
+      if (!text) return;
+      const formatted = formatRawPayload(text);
+      document.execCommand('insertHTML', false, formatted);
+      scheduleSave();
+      updateStatus();
+      flashNote('Text inserted');
+    };
+
+    const sanitizeHtml = html => html.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+    const pasteHtml = html => {
+      if (!html) return;
+      const clean = sanitizeHtml(html);
+      document.execCommand('insertHTML', false, clean);
+      scheduleSave();
+      updateStatus();
+      flashNote('HTML inserted');
+    };
+
+    const convertRtfToHtml = raw => {
+      let text = raw.replace(/\r?\n/g, ' ');
+      text = text.replace(/\\par[d]?/gi, '<br>');
+      text = text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+      text = text.replace(/\\[^\s]+/g, '');
+      text = text.replace(/[{}]/g, '');
+      return text.trim();
+    };
+
+    const insertMediaFromFile = (file, type) => {
+      const element = document.createElement(type);
+      element.controls = true;
+      if (type === 'video') {
+        element.setAttribute('playsinline', '');
+        element.style.maxWidth = '100%';
+      }
+      const url = URL.createObjectURL(file);
+      element.src = url;
+      element.addEventListener('loadeddata', () => URL.revokeObjectURL(url));
+      element.addEventListener('error', () => URL.revokeObjectURL(url));
+      insertElementAtSelection(element);
+      scheduleSave();
+      updateStatus();
+      flashNote(`${type.charAt(0).toUpperCase() + type.slice(1)} inserted`);
+    };
+
+    const handleFileDrop = file => {
+      const lowerType = file.type.toLowerCase();
+      if (!lowerType && file.name) {
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        switch (ext) {
+          case 'txt':
+          case 'md':
+            break;
+          case 'rtf':
+            break;
+          case 'html':
+            break;
+          case 'mp3':
+          case 'mp4':
+            break;
+          default:
+            break;
+        }
+      }
+      if (lowerType.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = loadEvent => {
+          const src = loadEvent.target?.result;
+          if (typeof src === 'string') {
+            insertImageFromClipboard(src);
+          }
+        };
+        reader.readAsDataURL(file);
+        return true;
+      }
+      if (lowerType.startsWith('audio/')) {
+        insertMediaFromFile(file, 'audio');
+        return true;
+      }
+      if (lowerType.startsWith('video/')) {
+        insertMediaFromFile(file, 'video');
+        return true;
+      }
+      if (lowerType === 'text/plain' || file.name?.toLowerCase().endsWith('.txt') || file.name?.toLowerCase().endsWith('.md')) {
+        const reader = new FileReader();
+        reader.onload = loadEvent => {
+          const text = loadEvent.target?.result;
+          if (typeof text === 'string') {
+            insertPlainText(text);
+          }
+        };
+        reader.readAsText(file);
+        return true;
+      }
+      if (lowerType === 'text/html' || file.name?.toLowerCase().endsWith('.html')) {
+        const reader = new FileReader();
+        reader.onload = loadEvent => {
+          const html = loadEvent.target?.result;
+          if (typeof html === 'string') {
+            pasteHtml(html);
+          }
+        };
+        reader.readAsText(file);
+        return true;
+      }
+      if (file.name?.toLowerCase().endsWith('.rtf') || lowerType === 'application/rtf') {
+        const reader = new FileReader();
+        reader.onload = loadEvent => {
+          const raw = loadEvent.target?.result;
+          if (typeof raw === 'string') {
+            const html = convertRtfToHtml(raw);
+            pasteHtml(html);
+          }
+        };
+        reader.readAsText(file);
+        return true;
+      }
+      return false;
+    };
+
+    const handleDrop = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const dt = event.dataTransfer;
+      const files = Array.from(dt?.files || []);
+      if (files.length) {
+        if (handleFileDrop(files[0])) return;
+      }
+      const html = dt?.getData('text/html');
+      if (html) {
+        pasteHtml(html);
+        return;
+      }
+      const text = dt?.getData('text/plain');
+      if (text) {
+        insertPlainText(text);
+      }
+    };
+
+    editor.addEventListener('dragenter', event => event.preventDefault());
+    editor.addEventListener('dragover', event => event.preventDefault());
+    editor.addEventListener('drop', handleDrop);
+
     document.addEventListener('selectionchange', () => {
       updateStatus();
       updateAiToolbarState();
@@ -2832,7 +3300,7 @@ ${body}
 
     document.addEventListener('keydown', event => {
       refreshLockIndicators(event);
-        if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+        if (!(event.ctrlKey || event.metaKey)) return;
         const key = event.key.toLowerCase();
         let handled = false;
         switch (key) {
@@ -2868,9 +3336,31 @@ ${body}
           showNewDocModal();
           handled = true;
           break;
-          case 'p':
-            window.print();
+        case 't':
+          if (event.shiftKey) {
+            insertTask();
             handled = true;
+          }
+          break;
+          case 'p':
+            if (event.altKey && !event.shiftKey) {
+              setFormatBlock('p');
+            } else {
+              window.print();
+            }
+            handled = true;
+            break;
+          case 'x':
+            if (event.shiftKey && !event.altKey) {
+              performAppAction('clear-all');
+              handled = true;
+            }
+            break;
+          case 'm':
+            if (event.shiftKey && !event.altKey) {
+              performAppAction('remove-formatting');
+              handled = true;
+            }
             break;
           case '1':
             setFormatBlock('h1');
@@ -2894,6 +3384,30 @@ ${body}
           case 'k':
             handleAiShortcut();
             handled = true;
+            break;
+          case 'arrowup':
+            if (event.shiftKey) {
+              moveListItem('up');
+              handled = true;
+            }
+            break;
+          case 'arrowdown':
+            if (event.shiftKey) {
+              moveListItem('down');
+              handled = true;
+            }
+            break;
+          case 'd':
+            if (event.shiftKey) {
+              duplicateListItem();
+              handled = true;
+            }
+            break;
+          case 'delete':
+            if (event.shiftKey) {
+              removeListItem();
+              handled = true;
+            }
             break;
         }
         const isPageBreakShortcut =
@@ -2924,6 +3438,29 @@ ${body}
 
     const setFormatBlock = block => {
       document.execCommand('formatBlock', false, `<${block}>`);
+    };
+
+    const applyRawContent = () => {
+      if (!rawMessage) return false;
+      try {
+        const decoded = decodeURIComponent(rawMessage);
+        const rawHtml = formatRawPayload(decoded);
+        const existing = editor.innerHTML.trim() ? editor.innerHTML : '';
+        if (rawAppend === 'head') {
+          editor.innerHTML = ensureEditorContent(rawHtml + existing);
+        } else if (rawAppend === 'tail') {
+          editor.innerHTML = ensureEditorContent(existing + rawHtml);
+        } else {
+          editor.innerHTML = ensureEditorContent(rawHtml);
+        }
+        scheduleSave();
+        updateStatus();
+        flashNote('Loaded raw text');
+        return true;
+      } catch (error) {
+        console.warn('Raw content load failed', error);
+        return false;
+      }
     };
 
     const copyDocument = async () => {
@@ -3026,6 +3563,123 @@ ${body}
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
       flashNote('RTF download ready');
+    };
+
+    const sanitizeFilename = raw => {
+      const base = (raw || '').replace(/[^\u0000-\u007F]/g, '');
+      const cleaned = base.replace(/[^\n\w\s-]/g, '').trim().replace(/\s+/g, '-');
+      return cleaned || 'document';
+    };
+
+    const getHtmlDownloadFilename = () => {
+      const label = slugLabel && slugLabel !== 'Untitled' ? slugLabel : 'document';
+      return `${sanitizeFilename(label)}.html`;
+    };
+
+    const buildHtmlDocumentWithContent = (content, title) => {
+      const safeTitle = title || 'Writer 98 document';
+      const safeContent = content || '<p><br></p>';
+      const style = "body { margin: 0; padding: 0; background: #fdfbf7; } .writer98-export { font-family: 'Times New Roman', 'Georgia', serif; font-size: 1rem; line-height: 1.55; color: #1c1c1c; border: 1px solid #d5d5d5; background: #fdfbf7; padding: 16px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }";
+      return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${safeTitle}</title><style>${style}</style></head><body><div class="writer98-export">${safeContent}</div></body></html>`;
+    };
+
+    const downloadBlob = (blob, filename) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    };
+
+    const downloadHtmlDocument = () => {
+      const filename = getHtmlDownloadFilename();
+      const htmlContent = buildHtmlDocumentWithContent(editor.innerHTML.trim(), slugLabel && slugLabel !== 'Untitled' ? slugLabel : 'Writer 98 document');
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      downloadBlob(blob, filename);
+      flashNote('HTML download ready');
+    };
+
+    const exportAllDocuments = async () => {
+      if (typeof window.JSZip !== 'function') {
+        flashNote('Export unavailable');
+        return;
+      }
+      const zip = new window.JSZip();
+      const draftKeys = Object.keys(localStorage).filter(key => key.startsWith(docPrefix));
+      if (!draftKeys.length) {
+        flashNote('No drafts to export');
+        return;
+      }
+      draftKeys.forEach(key => {
+        const slug = decodeSlug(key);
+        const storedHtml = localStorage.getItem(key) || '<p><br></p>';
+        const fileTitle = formatLabel(slug);
+        const content = buildHtmlDocumentWithContent(storedHtml, fileTitle);
+        const filename = `${sanitizeFilename(slug || 'document')}.html`;
+        zip.file(filename, content);
+      });
+      try {
+        const blob = await zip.generateAsync({ type: 'blob' });
+        downloadBlob(blob, 'writer98-export.zip');
+        flashNote(`Exported ${draftKeys.length} draft${draftKeys.length === 1 ? '' : 's'}`);
+      } catch (error) {
+        console.error('Export all failed', error);
+        flashNote('Export failed');
+      }
+    };
+
+    const getPdfDownloadFilename = () => {
+      const label = slugLabel && slugLabel !== 'Untitled' ? slugLabel : 'document';
+      return `${sanitizeFilename(label)}.pdf`;
+    };
+
+    const buildPdfElement = () => {
+      const container = document.createElement('div');
+      container.className = 'writer98-export';
+      container.style.position = 'absolute';
+      container.style.left = '0';
+      container.style.top = '0';
+      container.style.boxSizing = 'border-box';
+      container.style.background = '#fdfbf7';
+      container.style.padding = '24px 28px';
+      container.style.width = '595px';
+      container.style.minHeight = '842px';
+      container.style.color = '#1c1c1c';
+      container.style.fontFamily = "'Times New Roman', Georgia, serif";
+      container.style.fontSize = '12pt';
+      container.innerHTML = editor.innerHTML.trim() || '<p><br></p>';
+      document.body.appendChild(container);
+      return container;
+    };
+
+    const downloadPdfDocument = async () => {
+      if (typeof html2canvas !== 'function' || !window.jspdf?.jsPDF) {
+        flashNote('PDF export unavailable');
+        return;
+      }
+      const filename = getPdfDownloadFilename();
+      const element = buildPdfElement();
+      await new Promise(requestAnimationFrame);
+      try {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'pt', 'a4');
+        await pdf.html(element, {
+          html2canvas: { scale: window.devicePixelRatio || 1, backgroundColor: '#fdfbf7' },
+          pagebreak: { mode: ['css', 'legacy'] },
+          callback: doc => {
+            doc.save(filename);
+            flashNote('PDF download ready');
+          },
+          margin: [20, 20, 20, 20]
+        });
+      } catch (error) {
+        console.warn('PDF export failed', error);
+        flashNote('PDF export failed');
+      } finally {
+        document.body.removeChild(element);
+      }
     };
 
     const insertPageBreak = () => {
@@ -3238,6 +3892,9 @@ ${body}
       const sharedLoaded = await loadSharedContent();
       if (!sharedLoaded) {
         restore();
+      }
+      if (rawMessage) {
+        applyRawContent();
       }
       focusEditor();
       updateStatus();

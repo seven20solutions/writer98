@@ -46,6 +46,25 @@ To run it locally, simply:
 2. Use the toolbar or keyboard shortcuts to format text, save drafts, or open the modal list of saved
    drafts.
 3. `localStorage` keeps each draft keyed by `writer98-doc-<slug>` and metadata under
-   `writer98-meta-<slug>`.
+    `writer98-meta-<slug>`.
 
 No build step is required; just open the HTML file in any modern browser.
+
+### Importing text via URL
+
+- The editor accepts a `raw` query parameter so you can push plain text remotely without needing
+  any extra pages. Point another site or form at `https://writer-98.com/index.html?raw=${encodeURIComponent('Your text here')}`
+  (remember to URL-encode line breaks, e.g., `\n`).
+- If `raw` is present the editor escapes the payload, turns newline characters into `<br>`, and inserts the
+  text in place of the current document.
+- To prepend or append the text instead of replacing everything, add `append=head` or `append=tail` to the same URL
+  (e.g., `?raw=Todo&append=tail`). Without `append` the payload still overwrites, so you can share
+  both static drafts (`?m=`) and dynamic snippets (`?raw=`) via a single-file interface.
+
+### Exporting
+
+- Use the File menu to download the current document in multiple formats: RTF (existing flow), HTML
+  (captures the editor’s inner HTML with matching styles), or PDF (powered by html2canvas + jsPDF). The exported
+  HTML/PDF files can later be dragged back into the editor for a perfect reload.
+  There is also an Export All option that packages every saved draft into a zipped bundle of HTML files recording
+  each draft's slug.
