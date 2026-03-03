@@ -878,6 +878,10 @@
       .ruler {
         display: none;
       }
+      body.editor-focused .editor-wrapper {
+        max-height: 50vh;
+        overflow: auto;
+      }
       body.chrome-collapsed .editor-wrapper {
         padding-top: calc(var(--mobile-chrome-min-height) + 60px);
       }
@@ -2381,6 +2385,15 @@ ${body}
     const focusEditor = () => {
       editor.focus({ preventScroll: true });
     };
+
+    const handleEditorFocusChange = () => {
+      document.body.classList.toggle('editor-focused', editor === document.activeElement || editor.contains(document.activeElement));
+    };
+
+    editor.addEventListener('focus', handleEditorFocusChange);
+    editor.addEventListener('blur', () => {
+      setTimeout(handleEditorFocusChange, 0);
+    });
 
     const updateStatus = () => {
       const selection = window.getSelection();
