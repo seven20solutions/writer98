@@ -38,6 +38,10 @@
       margin: 0;
       background: #63639C;
       min-height: 100vh;
+    }
+
+    .app-shell {
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -781,30 +785,45 @@
       :root {
         --mobile-chrome-height: 120px;
         --mobile-chrome-min-height: 68px;
+        --mobile-toolbars-offset: 11px;
       }
-      html, body { padding: 0; }
+      .app-shell {
+        display: block;
+        min-height: auto;
+        padding: 0;
+      }
       .window {
         width: 100%;
-        min-height: 100vh;
+        min-height: auto;
         border-radius: 0;
         box-shadow: none;
       }
       .chrome-stack {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 60;
         padding: 4px 8px 8px;
         background: var(--frame-base);
         box-shadow: 0 8px 16px rgba(0,0,0,.25);
         transition: height 0.2s ease, padding 0.2s ease;
       }
-      body.mobile-keyboard-open .chrome-stack {
-        transform: translateY(0);
-      }
       .chrome-stack.collapsed {
         padding: 2px 8px 4px;
+      }
+      body.mobile-toolbars-fixed .toolbar,
+      body.mobile-toolbars-fixed .mobile-task-toolbar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        width: 100%;
+        z-index: 55;
+      }
+      body.mobile-toolbars-fixed .toolbar {
+        top: var(--mobile-toolbars-offset, 0px);
+      }
+      body.mobile-toolbars-fixed .mobile-task-toolbar {
+        top: calc(var(--mobile-task-toolbar-top, 0px) + var(--mobile-toolbars-offset, 0px));
+        margin-top: 0;
+      }
+      body.mobile-toolbars-fixed .editor-wrapper {
+        padding-top: calc(var(--mobile-toolbars-height, 0px) + 4px);
       }
       .menu-bar {
         flex-wrap: wrap;
@@ -1005,7 +1024,8 @@
   </style>
 </head>
 <body>
-  <div class="window" role="application" aria-label="Writer 98 inspired editor">
+  <div class="app-shell">
+    <div class="window" role="application" aria-label="Writer 98 inspired editor">
     <div class="chrome-stack">
       <div class="title-bar">
         <div class="icon" aria-hidden="true"></div>
@@ -1156,6 +1176,7 @@
         <div class="status-pill" id="status-caps">CAP</div>
         <div class="status-pill" id="status-num">NUM</div>
       </div>
+    </div>
     </div>
   </div>
 
@@ -2251,6 +2272,8 @@ ${body}
     };
 
     const chromeStack = document.querySelector('.chrome-stack');
+    const toolbar = document.querySelector('.toolbar');
+    const mobileTaskToolbar = document.getElementById('mobileTaskToolbar');
     let isChromeCollapsed = false;
     let keyboardOpen = false;
     let baseViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
@@ -2283,9 +2306,35 @@ ${body}
       }
       updateKeyboardState();
     };
+    const resetStickyToolbarVars = () => {
+      document.body.style.removeProperty('--mobile-toolbars-height');
+      document.body.style.removeProperty('--mobile-task-toolbar-top');
+    };
+
+    const updateStickyToolbars = () => {
+      if (window.innerWidth > 800 || !toolbar) {
+        document.body.classList.remove('mobile-toolbars-fixed');
+        resetStickyToolbarVars();
+        return;
+      }
+      if (window.scrollY > 0) {
+        const toolbarHeight = Math.round(toolbar.getBoundingClientRect().height);
+        const taskHeight = mobileTaskToolbar ? Math.round(mobileTaskToolbar.getBoundingClientRect().height) : 0;
+        document.body.style.setProperty('--mobile-task-toolbar-top', `${toolbarHeight}px`);
+        document.body.style.setProperty('--mobile-toolbars-height', `${toolbarHeight + taskHeight}px`);
+        document.body.classList.add('mobile-toolbars-fixed');
+      } else {
+        document.body.classList.remove('mobile-toolbars-fixed');
+        resetStickyToolbarVars();
+      }
+    };
     window.addEventListener('scroll', handleMobileChrome, { passive: true });
     window.addEventListener('resize', handleMobileChrome);
     handleMobileChrome();
+
+    window.addEventListener('scroll', updateStickyToolbars, { passive: true });
+    window.addEventListener('resize', updateStickyToolbars);
+    updateStickyToolbars();
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
