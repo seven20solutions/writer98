@@ -1159,6 +1159,8 @@
       <button type="button" data-action="move-list-down" aria-label="Move task down"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i></button>
       <button type="button" data-action="duplicate-list-item" aria-label="Duplicate task"><i class="fa-solid fa-clone" aria-hidden="true"></i></button>
       <button type="button" data-action="remove-list-item" aria-label="Remove task"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
+      <button type="button" data-action="mobile-copy" aria-label="Copy document"><i class="fa-solid fa-copy" aria-hidden="true"></i></button>
+      <button type="button" data-action="mobile-paste" aria-label="Paste clipboard"><i class="fa-solid fa-clipboard" aria-hidden="true"></i></button>
     </div>
     <div class="ruler" aria-hidden="true">
       <span><span>0</span><span>2"</span><span>4"</span><span>6"</span><span>8"</span><span>10"</span></span>
@@ -2958,6 +2960,73 @@ ${body}
       window.location.href = `${window.location.pathname}?d=${encodeURIComponent(slug)}`;
     });
 
+    const copyTextToClipboard = async text => {
+      if (!text) {
+        flashNote('Nothing to copy');
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          flashNote('Document copied to clipboard');
+          return;
+        } catch (error) {
+          console.warn('Clipboard write failed', error);
+        }
+      }
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('aria-hidden', 'true');
+      textarea.style.position = 'fixed';
+      textarea.style.top = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        flashNote('Document copied to clipboard');
+      } catch (error) {
+        console.warn('Fallback clipboard copy failed', error);
+        flashNote('Unable to copy document');
+      }
+      document.body.removeChild(textarea);
+    };
+
+    const insertTextAtSelection = text => {
+      if (!text) return;
+      focusEditor();
+      const selection = window.getSelection();
+      if (!selection) return;
+      const range = selection.rangeCount ? selection.getRangeAt(0) : document.createRange();
+      range.deleteContents();
+      const fragment = document.createTextNode(text);
+      range.insertNode(fragment);
+      range.setStartAfter(fragment);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    };
+
+    const pasteClipboardToEditor = async () => {
+      if (!navigator.clipboard?.readText) {
+        flashNote('Paste not supported on this device');
+        return;
+      }
+      try {
+        const clipboardText = await navigator.clipboard.readText();
+        if (!clipboardText) {
+          flashNote('Clipboard is empty');
+          return;
+        }
+        insertTextAtSelection(clipboardText);
+        scheduleSave();
+        flashNote('Pasted clipboard content');
+        updateStatus();
+      } catch (error) {
+        console.warn('Clipboard read failed', error);
+        flashNote('Unable to read clipboard');
+      }
+    };
+
     const runClipboardCommand = (command, message) => {
       try {
         const executed = document.execCommand(command);
@@ -3062,6 +3131,12 @@ ${body}
           break;
         case 'copy':
           runClipboardCommand('copy', 'Copied to clipboard');
+          break;
+        case 'mobile-copy':
+          await copyTextToClipboard(editor.innerText);
+          break;
+        case 'mobile-paste':
+          await pasteClipboardToEditor();
           break;
         case 'embed':
           openEmbedModal();
