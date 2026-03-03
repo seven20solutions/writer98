@@ -2276,11 +2276,10 @@ ${body}
         isChromeCollapsed = false;
         return;
       }
-      const shouldCollapse = window.scrollY > 40;
-      chromeStack.classList.toggle('collapsed', shouldCollapse);
-      if (shouldCollapse !== isChromeCollapsed) {
-        document.body.classList.toggle('chrome-collapsed', shouldCollapse);
-        isChromeCollapsed = shouldCollapse;
+      chromeStack.classList.remove('collapsed');
+      if (isChromeCollapsed) {
+        document.body.classList.remove('chrome-collapsed');
+        isChromeCollapsed = false;
       }
       updateKeyboardState();
     };
