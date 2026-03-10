@@ -1053,6 +1053,9 @@
             <button type="button" data-menu-action="download-html"><span class="menu-option">Download (HTML)</span></button>
             <button type="button" data-menu-action="download-pdf"><span class="menu-option">Download (PDF)</span></button>
             <button type="button" data-menu-action="export-all"><span class="menu-option">Export All</span></button>
+            <div class="menu-divider" role="presentation"></div>
+            <button type="button" data-menu-action="export-data"><span class="menu-option">Export data</span></button>
+            <button type="button" data-menu-action="import-data"><span class="menu-option">Import data</span></button>
             <button type="button" data-menu-action="print"><span class="menu-option">Print</span><span class="menu-shortcut">CTRL+P</span></button>
           </div>
         </div>
@@ -1402,6 +1405,7 @@
     <button type="button" id="imageReset">Reset</button>
   </div>
 
+  <input type="file" id="dataImportInput" accept="application/json" hidden />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -1453,6 +1457,7 @@
     const embedWarning = document.getElementById('embedWarning');
     const closeEmbedButton = document.getElementById('closeEmbedModal');
     const cancelEmbedButton = document.getElementById('cancelEmbed');
+    const dataImportInput = document.getElementById('dataImportInput');
 
     const querySlug = new URLSearchParams(window.location.search).get('d');
     const sharedMessage = new URLSearchParams(window.location.search).get('m');
@@ -2259,16 +2264,139 @@ ${body}
       document.title = slugLabel && slugLabel !== 'Untitled' ? `Writer 98 · ${slugLabel}` : 'Writer 98';
     };
 
-      const metaKeyForSlug = slug => `${metaPrefix}${encodeURIComponent(slug)}`;
-      const loadMetaForSlug = slug => {
-        const raw = localStorage.getItem(metaKeyForSlug(slug));
-        if (!raw) return null;
+    const metaKeyForSlug = slug => `${metaPrefix}${encodeURIComponent(slug)}`;
+    const loadMetaForSlug = slug => {
+      const raw = localStorage.getItem(metaKeyForSlug(slug));
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const DATA_EXPORT_VERSION = 1;
+    const IMPORT_CONFIRM_MESSAGE =
+      'Import will replace saved drafts and preferences (dictionary + AI settings) but not your encrypted API key. Continue?';
+    const getDraftStorageKeys = () => Object.keys(localStorage).filter(key => key.startsWith(docPrefix));
+    const collectDraftEntries = () =>
+      getDraftStorageKeys().map(key => {
+        const slug = decodeSlug(key);
+        return {
+          slug,
+          html: localStorage.getItem(key) || '<p><br></p>',
+          meta: loadMetaForSlug(slug)
+        };
+      });
+    const buildDataExportPayload = () => ({
+      version: DATA_EXPORT_VERSION,
+      exportedAt: new Date().toISOString(),
+      drafts: collectDraftEntries(),
+      prefs: {
+        dictionary: Array.from(userDictionary),
+        aiModel: localStorage.getItem(aiModelStorageKey),
+        aiTemperature: localStorage.getItem(aiTempStorageKey),
+        aiSearch: localStorage.getItem(aiSearchStorageKey)
+      }
+    });
+    const exportAppData = async () => {
+      const payload = buildDataExportPayload();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      downloadBlob(blob, 'writer98-data-export.json');
+      flashNote('Data export ready');
+    };
+    const clearDraftStorage = () => {
+      getDraftStorageKeys().forEach(key => {
+        const slug = decodeSlug(key);
+        localStorage.removeItem(key);
+        localStorage.removeItem(metaKeyForSlug(slug));
+      });
+    };
+    const applyImportedDrafts = drafts => {
+      if (!Array.isArray(drafts)) return;
+      drafts.forEach((entry, index) => {
+        if (!entry) return;
+        const fallbackSlug = `imported-${index + 1}`;
+        const rawSlug = typeof entry.slug === 'string' && entry.slug.trim() ? entry.slug : fallbackSlug;
+        const slug = rawSlug;
+        const key = `${docPrefix}${encodeURIComponent(slug)}`;
+        const html = typeof entry.html === 'string' && entry.html.trim() ? entry.html : '<p><br></p>';
+        localStorage.setItem(key, html);
+        const saved = typeof entry.meta?.saved === 'number' ? entry.meta.saved : Date.now();
+        localStorage.setItem(metaKeyForSlug(slug), JSON.stringify({ slug, saved }));
+      });
+    };
+    const applyImportedDictionary = dictionary => {
+      userDictionary.clear();
+      if (Array.isArray(dictionary)) {
+        dictionary.forEach(word => {
+          if (typeof word === 'string' && word.trim()) {
+            userDictionary.add(word);
+          }
+        });
+      }
+      ensureDictionarySet();
+      saveUserDictionary();
+    };
+    const applyImportedPrefs = prefs => {
+      if (!prefs) return;
+      const setPref = (key, value) => {
+        if (value === undefined || value === null) {
+          localStorage.removeItem(key);
+          return;
+        }
+        localStorage.setItem(key, value.toString());
+      };
+      setPref(aiModelStorageKey, prefs.aiModel);
+      setPref(aiTempStorageKey, prefs.aiTemperature);
+      setPref(aiSearchStorageKey, prefs.aiSearch);
+      loadAiPreferences();
+      syncTemperatureControl();
+    };
+    const handleImportFile = event => {
+      const file = event?.target?.files?.[0];
+      if (!file) {
+        if (dataImportInput) dataImportInput.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
         try {
-          return JSON.parse(raw);
+          const parsed = JSON.parse(reader.result);
+          if (parsed.version !== DATA_EXPORT_VERSION) {
+            flashNote('Unsupported import version');
+            return;
+          }
+          if (!Array.isArray(parsed.drafts)) {
+            flashNote('Import file missing drafts');
+            return;
+          }
+          if (!confirm(IMPORT_CONFIRM_MESSAGE)) return;
+          clearDraftStorage();
+          applyImportedDrafts(parsed.drafts);
+          applyImportedDictionary(parsed.prefs?.dictionary);
+          applyImportedPrefs(parsed.prefs);
+          flashNote('Data imported. Reloading...');
+          setTimeout(() => window.location.reload(), 400);
         } catch (error) {
-          return null;
+          console.warn('Data import failed', error);
+          flashNote('Unable to parse import file');
+        } finally {
+          if (dataImportInput) dataImportInput.value = '';
         }
       };
+      reader.onerror = () => {
+        flashNote('Unable to read import file');
+        if (dataImportInput) dataImportInput.value = '';
+      };
+      reader.readAsText(file);
+    };
+    const openImportDialog = () => {
+      if (!dataImportInput) return;
+      dataImportInput.value = '';
+      dataImportInput.click();
+    };
+    dataImportInput?.addEventListener('change', handleImportFile);
 
     const updateSavedNote = () => {
       const base = `Draft: ${slugLabel}`;
@@ -2993,6 +3121,13 @@ ${body}
         case 'export-all':
           persist();
           await exportAllDocuments();
+          break;
+        case 'export-data':
+          persist();
+          await exportAppData();
+          break;
+        case 'import-data':
+          openImportDialog();
           break;
         case 'download-pdf':
           persist();
@@ -4310,7 +4445,7 @@ ${body}
       return embedSelectionRange;
     };
 
-    const openDraftKeys = () => Object.keys(localStorage).filter(key => key.startsWith(docPrefix));
+    const openDraftKeys = getDraftStorageKeys;
 
     const decodeSlug = key => decodeURIComponent(key.slice(docPrefix.length));
 
