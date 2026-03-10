@@ -898,6 +898,21 @@
       }
       .editor { min-height: 360px; font-size: 1.1rem; }
     }
+
+    @media (max-height: 399px) {
+      .chrome-stack {
+        display: flex;
+        flex-direction: column;
+      }
+      .status-bar {
+        order: 10;
+      }
+      .toolbar,
+      .mobile-task-toolbar {
+        order: 12;
+        margin-top: 4px;
+      }
+    }
     .spell-panel {
       padding: 0 20px 12px;
       border-bottom: 1px solid #d1d1d1;
