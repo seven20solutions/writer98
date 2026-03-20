@@ -1705,6 +1705,9 @@
     const cancelR2Button = document.getElementById('cancelR2Modal');
     const r2Warning = document.getElementById('r2Warning');
 
+    const normalizeQueryValue = raw => (typeof raw === 'string' ? raw.trim() : '');
+    const normalizeCollabCode = raw => normalizeQueryValue(raw).replace(/\s+/g, '-');
+    const normalizeServerValue = raw => normalizeQueryValue(raw);
     const urlParams = new URLSearchParams(window.location.search);
     const querySlug = urlParams.get('d');
     const sharedMessage = urlParams.get('m');
@@ -1713,6 +1716,22 @@
     const queryServer = urlParams.get('s');
     const queryCollabCode = urlParams.get('cc');
     const queryPublishKey = urlParams.get('pk');
+    // R2 querystring overrides (optional)
+    const queryR2AccountId = normalizeQueryValue(urlParams.get('r2_account'));
+    const queryR2AccessKeyId = normalizeQueryValue(urlParams.get('r2_access'));
+    const queryR2Secret = normalizeQueryValue(urlParams.get('r2_secret'));
+    const queryR2Bucket = normalizeQueryValue(urlParams.get('r2_bucket'));
+    const queryR2Key = normalizeQueryValue(urlParams.get('r2_key'));
+    const queryR2Strategy = normalizeQueryValue(urlParams.get('r2_strategy'));
+    const queryR2AutoSync = (urlParams.get('r2_autosync') === '1' || urlParams.get('r2_autosync') === 'true');
+    const r2QueryCreds = (queryR2AccountId || queryR2AccessKeyId || queryR2Secret)
+      ? { accountId: queryR2AccountId, accessKeyId: queryR2AccessKeyId, secretAccessKey: queryR2Secret }
+      : null;
+    const r2QueryConfigOverrides = {};
+    if (queryR2Bucket) r2QueryConfigOverrides.bucket = queryR2Bucket;
+    if (queryR2Key) r2QueryConfigOverrides.key = queryR2Key;
+    if (queryR2Strategy) r2QueryConfigOverrides.strategy = queryR2Strategy;
+    const runtimeR2OverridesPresent = Boolean(r2QueryCreds || Object.keys(r2QueryConfigOverrides).length);
     const activeSlug = querySlug ? querySlug : 'untitled';
     const slugLabel = formatLabel(activeSlug);
     const storageKey = `${docPrefix}${encodeURIComponent(activeSlug)}`;
@@ -1720,9 +1739,6 @@
     const shareBaseUrl = 'https://writer-98.com/?m=';
     const shareServerStorageKey = 'writer98-share-server';
     const collabSyncIntervalMs = 12000;
-    const normalizeQueryValue = raw => (typeof raw === 'string' ? raw.trim() : '');
-    const normalizeCollabCode = raw => normalizeQueryValue(raw).replace(/\s+/g, '-');
-    const normalizeServerValue = raw => normalizeQueryValue(raw);
     const storedServer = normalizeServerValue(localStorage.getItem(shareServerStorageKey));
     let shareServerEndpoint = normalizeServerValue(queryServer) || storedServer || '';
     if (normalizeServerValue(queryServer)) {
@@ -4945,11 +4961,23 @@ ${body}
       try {
         const raw = localStorage.getItem(r2ConfigStorageKey);
         if (!raw) return { bucket: '', key: 'writer98-export.json', strategy: 'overwrite' };
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        // apply any querystring overrides at runtime (do not persist)
+        return Object.assign({}, parsed, r2QueryConfigOverrides);
       } catch (e) {
         return { bucket: '', key: 'writer98-export.json', strategy: 'overwrite' };
       }
     };
+
+    // Resolve runtime credentials: querystring creds take precedence over stored localStorage creds
+    function getRuntimeR2Creds() {
+      if (r2QueryCreds) return r2QueryCreds;
+      try {
+        return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null');
+      } catch (e) {
+        return null;
+      }
+    }
 
     const saveR2Config = cfg => {
       try {
@@ -4965,20 +4993,31 @@ ${body}
       r2KeyInput.value = cfg.key || 'writer98-export.json';
       r2StrategySelect.value = cfg.strategy || 'overwrite';
       r2AutoSyncCheckbox.checked = Boolean(docMeta?.r2Sync);
-      // Load stored creds if present (optional - user choice)
-      const storedCreds = (() => {
-        try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; }
-      })();
-      if (storedCreds) {
-        r2AccountIdInput.value = storedCreds.accountId || '';
-        r2AccessIdInput.value = storedCreds.accessKeyId || '';
-        r2SecretKeyInput.value = storedCreds.secretAccessKey || '';
-        r2RememberCredsCheckbox.checked = true;
-      } else {
-        r2AccountIdInput.value = '';
-        r2AccessIdInput.value = '';
-        r2SecretKeyInput.value = '';
+      // Show runtime creds (querystring overrides take precedence) but do not persist them here
+      const runtimeCreds = getRuntimeR2Creds();
+      if (runtimeCreds) {
+        r2AccountIdInput.value = runtimeCreds.accountId || '';
+        r2AccessIdInput.value = runtimeCreds.accessKeyId || '';
+        r2SecretKeyInput.value = runtimeCreds.secretAccessKey || '';
+        // If creds came from querystring, make it clear they are not saved by default
         r2RememberCredsCheckbox.checked = false;
+        if (r2QueryCreds) {
+          r2Warning.textContent = 'Using R2 credentials provided in the URL (runtime only).';
+        }
+      } else {
+        // fallback to stored creds if present
+        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        if (storedCreds) {
+          r2AccountIdInput.value = storedCreds.accountId || '';
+          r2AccessIdInput.value = storedCreds.accessKeyId || '';
+          r2SecretKeyInput.value = storedCreds.secretAccessKey || '';
+          r2RememberCredsCheckbox.checked = true;
+        } else {
+          r2AccountIdInput.value = '';
+          r2AccessIdInput.value = '';
+          r2SecretKeyInput.value = '';
+          r2RememberCredsCheckbox.checked = false;
+        }
       }
       r2Warning.textContent = '';
       r2ModalOverlay.classList.add('active');
@@ -5059,7 +5098,7 @@ ${body}
       }
       try {
         const payload = buildDataExportPayload();
-        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        const storedCreds = getRuntimeR2Creds();
         let resp;
         if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
           try {
@@ -5106,7 +5145,7 @@ ${body}
           return;
         }
         // Try client-side first
-        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        const storedCreds = getRuntimeR2Creds();
         let resp = null;
         if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
           try {
@@ -5154,7 +5193,7 @@ ${body}
       try {
         const payload = buildDataExportPayload();
         // If credentials are stored locally, attempt direct client-side upload using SigV4 (unsafe for production)
-        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        const storedCreds = getRuntimeR2Creds();
         let resp;
         if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
           try {
@@ -5194,7 +5233,7 @@ ${body}
       }
       try {
         // Try client-side GET if creds stored, else use worker
-        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        const storedCreds = getRuntimeR2Creds();
         let resp;
         if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
           try {
@@ -5267,7 +5306,7 @@ ${body}
       if (!cfg?.bucket || !cfg?.key) return;
       r2PullLock = true;
       try {
-        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        const storedCreds = getRuntimeR2Creds();
         let resp = null;
         if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
           try {
@@ -5916,7 +5955,17 @@ ${body}
       }
       refreshCollabSync();
       // Start R2 sync timer for this document if enabled
+      // If URL requested autosync, enable it for this document at runtime (do not persist creds)
+      if (queryR2AutoSync) {
+        docMeta.r2Sync = true;
+        persist();
+        flashNote('R2 autosync enabled via URL');
+      }
       refreshR2Sync();
+      // Notify user if R2 overrides/credentials are provided in the URL
+      if (runtimeR2OverridesPresent) {
+        flashNote('Using R2 configuration/credentials from URL (runtime only).');
+      }
       focusEditor();
       updateStatus();
       updateAiToolbarState();
