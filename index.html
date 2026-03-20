@@ -436,6 +436,16 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .status-pill.status-sync {
+      min-width: 100px;
+      justify-content: center;
+      font-size: 0.65rem;
+      letter-spacing: 0.2px;
+      border-color: rgba(108, 108, 108, 0.9);
+      background: linear-gradient(180deg, #fff, #e4e4e4);
+      color: #1c1c1c;
+    }
+
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -746,6 +756,47 @@
       font-size: 0.9rem;
     }
 
+    .open-draft-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .open-draft-badges {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .draft-share-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0 6px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    .draft-share-pill i {
+      font-size: 0.75rem;
+    }
+
+    .draft-share-pill.collab {
+      border-color: #0c5da5;
+      color: #0c5da5;
+      background: rgba(12, 93, 165, 0.08);
+    }
+
+    .draft-share-pill.publish {
+      border-color: #2b8a3e;
+      color: #1c5a34;
+      background: rgba(43, 138, 62, 0.1);
+    }
+
     .open-draft-meta {
       font-size: 0.75rem;
       color: #3a3a3a;
@@ -854,9 +905,7 @@
         display: flex;
         margin-top: 4px;
       }
-      .toolbar button[data-action="spell"] {
-        display: none;
-      }
+      /* Spellcheck moved to Tools menu; toolbar button removed */
       .menu-bar span:not(:nth-child(-n+4)):not(:last-child) {
         display: none;
       }
@@ -1126,7 +1175,20 @@
           <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">Tools</button>
           <div class="menu-dropdown" role="menu">
             <button type="button" data-menu-action="ai">AI assistant</button>
+            <button type="button" data-menu-action="spell">Check spelling</button>
+            <button type="button" data-menu-action="quick-fix" style="display:none;"><span class="menu-option">Quick Fix</span><span class="menu-shortcut">CTRL+SHIFT+F</span></button>
             <button type="button" data-menu-action="share">Share document</button>
+            <button type="button" data-menu-action="r2-push">Push to R2</button>
+            <button type="button" data-menu-action="r2-pull">Pull from R2</button>
+            <button type="button" data-menu-action="r2-settings">R2 Storage</button>
+          </div>
+        </div>
+        <div class="menu" data-menu="share-menu">
+          <button type="button" class="menu-label" aria-haspopup="true" aria-expanded="false">Share</button>
+          <div class="menu-dropdown" role="menu">
+            <button type="button" data-menu-action="share-server"><span class="menu-option">Server</span></button>
+            <button type="button" data-menu-action="share-collab"><span class="menu-option">Collab code</span></button>
+            <button type="button" data-menu-action="share-publish"><span class="menu-option">Publish</span></button>
           </div>
         </div>
         <div class="menu" data-menu="help">
@@ -1141,9 +1203,11 @@
         <button data-action="save" title="Save (Ctrl+S)"><span class="icon"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i></span></button>
         <button data-action="download" title="Download document"><span class="icon"><i class="fa-solid fa-download" aria-hidden="true"></i></span></button>
         <button data-action="open" title="Open drafts"><span class="icon"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></span></button>
-        <button data-action="spell" title="Check spelling"><span class="icon"><i class="fa-solid fa-spell-check" aria-hidden="true"></i></span></button>
-        <button data-action="print" title="Print document (Ctrl+P)"><span class="icon"><i class="fa-solid fa-print" aria-hidden="true"></i></span></button>
+        <!-- Spellcheck moved to Tools menu per user request -->
+        <!-- Print button removed per request -->
         <button data-action="share" title="Share document"><span class="icon"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i></span></button>
+        <button data-action="r2-push" title="Push to R2"><span class="icon"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i></span></button>
+        <button data-action="r2-pull" title="Pull from R2"><span class="icon"><i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i></span></button>
         <button data-action="ai" title="AI assistant (Ctrl+K)" id="aiToolbarButton" disabled><span class="icon"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></span></button>
         <button data-action="page-break" title="Insert page break (Ctrl/Cmd+Shift+-)"><span class="icon"><i class="fa-solid fa-minus" aria-hidden="true"></i></span></button>
       <div style="flex:1"></div>
@@ -1195,6 +1259,8 @@
       </div>
       <div class="status-note" id="status-note" aria-live="polite"></div>
       <div class="status-right">
+        <div class="status-pill status-sync" id="status-sync-push" aria-live="polite"></div>
+        <div class="status-pill status-sync" id="status-sync-pull" aria-live="polite"></div>
         <div class="status-pill" id="status-caps">CAP</div>
         <div class="status-pill" id="status-num">NUM</div>
       </div>
@@ -1273,6 +1339,129 @@
           <button type="button" id="dismissShare" aria-label="Close share dialog">Close</button>
         </div>
         <div class="modal-warning" id="shareNotice"></div>
+      </div>
+    </div>
+  </div>
+
+    <div class="modal-overlay" id="serverModal" aria-hidden="true">
+    <div class="os9-modal" role="dialog" aria-modal="true" aria-labelledby="serverModalTitle">
+      <div class="modal-header">
+        <span id="serverModalTitle">Share Server</span>
+        <button type="button" id="closeServerModal" aria-label="Close server dialog">x</button>
+      </div>
+      <div class="modal-body">
+        <form id="serverForm">
+          <label for="serverUrl">Cloudflare Worker endpoint</label>
+          <input id="serverUrl" type="url" autocomplete="off" placeholder="https://example.workers.dev" />
+          <small>Set it once or use <code>?s=</code> to share a link.</small>
+          <div class="modal-actions">
+            <button type="submit">Save</button>
+            <button type="button" id="clearServerEndpoint">Clear</button>
+            <button type="button" id="cancelServerModal">Cancel</button>
+          </div>
+          <div class="modal-warning" id="serverWarning"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="r2Modal" aria-hidden="true">
+    <div class="os9-modal" role="dialog" aria-modal="true" aria-labelledby="r2ModalTitle">
+      <div class="modal-header">
+        <span id="r2ModalTitle">R2 Storage</span>
+        <button type="button" id="closeR2Modal" aria-label="Close R2 dialog">x</button>
+      </div>
+      <div class="modal-body">
+        <form id="r2Form">
+          <label for="r2Bucket">Bucket name</label>
+          <input id="r2Bucket" type="text" autocomplete="off" placeholder="my-bucket" />
+
+          <label for="r2Key">Object key</label>
+          <input id="r2Key" type="text" autocomplete="off" placeholder="writer98-export.json" />
+
+          <label for="r2Strategy">Write strategy</label>
+          <select id="r2Strategy">
+            <option value="overwrite">Overwrite (default)</option>
+            <option value="timestamp">Save timestamped backup</option>
+          </select>
+
+          <fieldset style="margin-top:10px; padding:8px; border:1px solid #eee;">
+            <legend style="font-size:0.9em">Direct R2 credentials (optional)</legend>
+            <label for="r2AccountId">Account ID</label>
+            <input id="r2AccountId" type="text" autocomplete="off" placeholder="account-id" />
+            <label for="r2AccessId">Access Key ID</label>
+            <input id="r2AccessId" type="text" autocomplete="off" placeholder="AKIA..." />
+            <label for="r2SecretKey">Secret Access Key</label>
+            <input id="r2SecretKey" type="password" autocomplete="new-password" placeholder="Secret" />
+            <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+              <input id="r2RememberCreds" type="checkbox" />
+              <label for="r2RememberCreds" style="margin:0;">Remember credentials (localStorage)</label>
+            </div>
+          </fieldset>
+
+          <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+            <input id="r2AutoSync" type="checkbox" />
+            <label for="r2AutoSync" style="margin:0;">Keep entries synced with R2 (this document)</label>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:12px;" class="modal-actions">
+            <button type="button" id="r2Push">Push to R2</button>
+            <button type="button" id="r2Pull">Pull from R2</button>
+            <button type="submit">Save</button>
+            <button type="button" id="cancelR2Modal">Cancel</button>
+          </div>
+          <div class="modal-warning" id="r2Warning"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="collabModal" aria-hidden="true">
+    <div class="os9-modal" role="dialog" aria-modal="true" aria-labelledby="collabModalTitle">
+      <div class="modal-header">
+        <span id="collabModalTitle">Collab Code</span>
+        <button type="button" id="closeCollabModal" aria-label="Close collab dialog">x</button>
+      </div>
+      <div class="modal-body">
+        <form id="collabForm">
+          <label for="collabCode">Collab code</label>
+          <input id="collabCode" type="text" autocomplete="off" placeholder="Apple-Pear-Banana" />
+          <small>Share the code + server via <code>?cc=</code> and <code>?s=</code>.</small>
+          <label for="collabLink">Collab link</label>
+          <input id="collabLink" type="text" readonly placeholder="Set server and collab code" />
+          <div class="modal-actions">
+            <button type="submit">Apply code</button>
+            <button type="button" id="clearCollabCode">Clear</button>
+            <button type="button" id="dismissCollabModal">Close</button>
+          </div>
+          <div class="modal-actions">
+            <button type="button" id="copyCollabLink">Copy share link</button>
+          </div>
+          <div class="modal-warning" id="collabWarning"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="publishModal" aria-hidden="true">
+    <div class="os9-modal" role="dialog" aria-modal="true" aria-labelledby="publishModalTitle">
+      <div class="modal-header">
+        <span id="publishModalTitle">Publish Document</span>
+        <button type="button" id="closePublishModal" aria-label="Close publish dialog">x</button>
+      </div>
+      <div class="modal-body">
+        <p>Send a read-only link with a publish key. Recipients can view but not edit.</p>
+        <label for="publishLink">Publish link</label>
+        <input id="publishLink" type="text" readonly placeholder="Publish to generate a link" />
+        <div class="modal-actions">
+          <button type="button" id="publishDocument">Publish</button>
+          <button type="button" id="unpublishDocument">Unpublish</button>
+          <button type="button" id="dismissPublishModal">Close</button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="copyPublishLink">Copy link</button>
+        </div>
+        <div class="modal-warning" id="publishWarning"></div>
       </div>
     </div>
   </div>
@@ -1455,6 +1644,7 @@
     const aiSearchToggle = document.getElementById('aiSearch');
     const aiToolbarButton = document.getElementById('aiToolbarButton');
     const temperatureControl = document.getElementById('temperatureControl');
+    const quickFixMenuItem = document.querySelector('[data-menu-action="quick-fix"]');
     const aiGenerateButton = document.getElementById('aiGenerate');
     const aiCancelButton = document.getElementById('aiCancel');
     const aiNukeButton = document.getElementById('aiNuke');
@@ -1473,16 +1663,74 @@
     const closeEmbedButton = document.getElementById('closeEmbedModal');
     const cancelEmbedButton = document.getElementById('cancelEmbed');
     const dataImportInput = document.getElementById('dataImportInput');
+    const statusPushIndicator = document.getElementById('status-sync-push');
+    const statusPullIndicator = document.getElementById('status-sync-pull');
+    const serverModalOverlay = document.getElementById('serverModal');
+    const serverForm = document.getElementById('serverForm');
+    const serverUrlInput = document.getElementById('serverUrl');
+    const clearServerButton = document.getElementById('clearServerEndpoint');
+    const cancelServerButton = document.getElementById('cancelServerModal');
+    const closeServerButton = document.getElementById('closeServerModal');
+    const serverWarning = document.getElementById('serverWarning');
+    const collabModalOverlay = document.getElementById('collabModal');
+    const collabForm = document.getElementById('collabForm');
+    const collabInput = document.getElementById('collabCode');
+    const collabLinkInput = document.getElementById('collabLink');
+    const copyCollabButton = document.getElementById('copyCollabLink');
+    const clearCollabButton = document.getElementById('clearCollabCode');
+    const closeCollabButton = document.getElementById('closeCollabModal');
+    const dismissCollabButton = document.getElementById('dismissCollabModal');
+    const collabWarning = document.getElementById('collabWarning');
+    const publishModalOverlay = document.getElementById('publishModal');
+    const publishLinkInput = document.getElementById('publishLink');
+    const publishButton = document.getElementById('publishDocument');
+    const unpublishButton = document.getElementById('unpublishDocument');
+    const copyPublishButton = document.getElementById('copyPublishLink');
+    const closePublishButton = document.getElementById('closePublishModal');
+    const dismissPublishButton = document.getElementById('dismissPublishModal');
+    const publishWarning = document.getElementById('publishWarning');
+    const r2ModalOverlay = document.getElementById('r2Modal');
+    const r2Form = document.getElementById('r2Form');
+    const r2BucketInput = document.getElementById('r2Bucket');
+    const r2KeyInput = document.getElementById('r2Key');
+    const r2StrategySelect = document.getElementById('r2Strategy');
+    const r2AccountIdInput = document.getElementById('r2AccountId');
+    const r2AccessIdInput = document.getElementById('r2AccessId');
+    const r2SecretKeyInput = document.getElementById('r2SecretKey');
+    const r2RememberCredsCheckbox = document.getElementById('r2RememberCreds');
+    const r2AutoSyncCheckbox = document.getElementById('r2AutoSync');
+    const r2PushButton = document.getElementById('r2Push');
+    const r2PullButton = document.getElementById('r2Pull');
+    const closeR2Button = document.getElementById('closeR2Modal');
+    const cancelR2Button = document.getElementById('cancelR2Modal');
+    const r2Warning = document.getElementById('r2Warning');
 
-    const querySlug = new URLSearchParams(window.location.search).get('d');
-    const sharedMessage = new URLSearchParams(window.location.search).get('m');
-    const rawMessage = new URLSearchParams(window.location.search).get('raw');
-    const rawAppend = new URLSearchParams(window.location.search).get('append');
+    const urlParams = new URLSearchParams(window.location.search);
+    const querySlug = urlParams.get('d');
+    const sharedMessage = urlParams.get('m');
+    const rawMessage = urlParams.get('raw');
+    const rawAppend = urlParams.get('append');
+    const queryServer = urlParams.get('s');
+    const queryCollabCode = urlParams.get('cc');
+    const queryPublishKey = urlParams.get('pk');
     const activeSlug = querySlug ? querySlug : 'untitled';
     const slugLabel = formatLabel(activeSlug);
     const storageKey = `${docPrefix}${encodeURIComponent(activeSlug)}`;
     const metaKey = `${metaPrefix}${encodeURIComponent(activeSlug)}`;
     const shareBaseUrl = 'https://writer-98.com/?m=';
+    const shareServerStorageKey = 'writer98-share-server';
+    const collabSyncIntervalMs = 12000;
+    const normalizeQueryValue = raw => (typeof raw === 'string' ? raw.trim() : '');
+    const normalizeCollabCode = raw => normalizeQueryValue(raw).replace(/\s+/g, '-');
+    const normalizeServerValue = raw => normalizeQueryValue(raw);
+    const storedServer = normalizeServerValue(localStorage.getItem(shareServerStorageKey));
+    let shareServerEndpoint = normalizeServerValue(queryServer) || storedServer || '';
+    if (normalizeServerValue(queryServer)) {
+      localStorage.setItem(shareServerStorageKey, shareServerEndpoint);
+    }
+    const viewerPublishKey = normalizeQueryValue(queryPublishKey);
+    let isReadOnlyView = Boolean(viewerPublishKey);
+    let triggerCollabSync = () => {};
     let lzStringPromise = null;
     const ensureLZString = () => {
       if (window.LZString) return Promise.resolve(window.LZString);
@@ -1523,6 +1771,12 @@
     const textDecoder = new TextDecoder();
     const arrayBufferToBase64 = buffer => btoa(String.fromCharCode(...new Uint8Array(buffer)));
     const base64ToArrayBuffer = base64 => Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const hasStoredAiKey = () => Boolean(localStorage.getItem(aiKeyStorageKey));
+    const syncQuickFixVisibility = () => {
+      if (!quickFixMenuItem) return;
+      quickFixMenuItem.style.display = hasStoredAiKey() ? '' : 'none';
+    };
+    syncQuickFixVisibility();
     const deriveCryptoKey = async (passphrase, salt) => {
       const keyMaterial = await crypto.subtle.importKey('raw', textEncoder.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
       return crypto.subtle.deriveKey(
@@ -1557,6 +1811,7 @@
       localStorage.setItem(aiKeyStorageKey, JSON.stringify(payload));
       cachedPassphrase = passphrase;
       cachedKey = rawKey;
+      syncQuickFixVisibility();
     };
     const loadEncryptedKey = async passphrase => {
       const stored = localStorage.getItem(aiKeyStorageKey);
@@ -1578,6 +1833,7 @@
       localStorage.removeItem(aiKeyStorageKey);
       cachedKey = null;
       cachedPassphrase = null;
+      syncQuickFixVisibility();
     };
     const getRangeHtml = range => {
       const container = document.createElement('div');
@@ -1589,6 +1845,7 @@
     let cachedPassphrase = null;
     let cachedKey = null;
     let aiModalLoading = false;
+    let quickFixLoading = false;
 
     let lastSavedAt = null;
     let noteTimer;
@@ -1884,6 +2141,34 @@
     };
 
 
+    const normalizeResponseChunk = chunk => {
+      if (!chunk) return '';
+      if (chunk.type === 'output_text' && typeof chunk.text === 'string') {
+        return chunk.text;
+      }
+      if (typeof chunk.text === 'string') {
+        return chunk.text;
+      }
+      if (typeof chunk === 'string') {
+        return chunk;
+      }
+      return '';
+    };
+    const extractAssistantText = data => {
+      const outputEntries = Array.isArray(data?.output) ? data.output : [];
+      const contentItems = outputEntries.flatMap(entry => entry?.content || []);
+      const assistantOutput = contentItems
+        .map(item => normalizeResponseChunk(item))
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+      const fallbackOutput = data?.output_text?.trim?.();
+      return assistantOutput || fallbackOutput || '';
+    };
+
+    const quickFixSystemMessage =
+      'You are a meticulous Australian English proofreader. Return only the corrected document as HTML, preserving the original markup and paragraph structure, and avoid commentary.';
+
     const handleAiGeneration = async () => {
       if (aiModalLoading) return;
       if (!aiRange) {
@@ -1986,28 +2271,7 @@
           return;
         }
         const data = await response.json();
-        const normalizeChunk = chunk => {
-          if (!chunk) return '';
-          if (chunk.type === 'output_text' && typeof chunk.text === 'string') {
-            return chunk.text;
-          }
-          if (typeof chunk.text === 'string') {
-            return chunk.text;
-          }
-          if (typeof chunk === 'string') {
-            return chunk;
-          }
-          return '';
-        };
-        const outputEntries = Array.isArray(data?.output) ? data.output : [];
-        const contentItems = outputEntries.flatMap(entry => entry?.content || []);
-        const assistantOutput = contentItems
-          .map(item => normalizeChunk(item))
-          .filter(Boolean)
-          .join('\n')
-          .trim();
-        const fallbackOutput = data?.output_text?.trim?.();
-        const finalOutput = assistantOutput || fallbackOutput || '';
+        const finalOutput = extractAssistantText(data);
         if (!finalOutput) {
           const incompleteReason = data?.incomplete_details?.reason;
           if (incompleteReason === 'max_output_tokens') {
@@ -2030,6 +2294,70 @@
         console.error('AI request failed', error);
         aiStatusText.textContent = 'Unable to reach OpenAI. Check your API key and network.';
         setAiModalLoading(false);
+      }
+    };
+
+    const handleQuickFix = async () => {
+      if (quickFixLoading) return;
+      if (!hasStoredAiKey()) {
+        flashNote('Quick Fix needs an OpenAI API key. Use Ctrl+K to add one.');
+        return;
+      }
+      if (!cachedKey) {
+        flashNote('Unlock the AI key (Ctrl+K) before running Quick Fix.');
+        return;
+      }
+      const documentHtml = editor.innerHTML.trim();
+      if (!documentHtml) {
+        flashNote('Document is empty. Add text before running Quick Fix.');
+        return;
+      }
+      quickFixLoading = true;
+      try {
+        const requestBody = {
+          model: 'gpt-4o-mini',
+          input: [
+            { role: 'system', content: quickFixSystemMessage },
+            { role: 'user', content: `Document HTML:\n${documentHtml}` }
+          ],
+          temperature: 0.3,
+          max_output_tokens: 1500
+        };
+        const response = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${cachedKey}`
+          },
+          body: JSON.stringify(requestBody)
+        });
+        if (!response.ok) {
+          const failure = await response.text();
+          if (response.status === 401) {
+            removeEncryptedKey();
+            flashNote('AI key unauthorized; store a new key to use Quick Fix.');
+          } else {
+            flashNote(`Quick Fix error ${response.status}: ${failure}`);
+          }
+          return;
+        }
+        const data = await response.json();
+        const finalOutput = extractAssistantText(data);
+        const cleanedHtml = stripCodeFence(finalOutput).trim();
+        if (!cleanedHtml) {
+          flashNote('Quick Fix returned no content. Try again.');
+          return;
+        }
+        editor.innerHTML = ensureEditorContent(cleanedHtml);
+        scheduleSave();
+        updateStatus();
+        flashNote('Quick Fix applied');
+        focusEditor();
+      } catch (error) {
+        console.error('Quick Fix failed', error);
+        flashNote('Quick Fix failed. Try again later.');
+      } finally {
+        quickFixLoading = false;
       }
     };
 
@@ -2280,15 +2608,27 @@ ${body}
     };
 
     const metaKeyForSlug = slug => `${metaPrefix}${encodeURIComponent(slug)}`;
+    const normalizeMetaShape = (meta, slug) => ({
+      slug: slug || meta?.slug || 'untitled',
+      saved: typeof meta?.saved === 'number' ? meta.saved : null,
+      collabCode: typeof meta?.collabCode === 'string' ? meta.collabCode : '',
+      publishKey: typeof meta?.publishKey === 'string' ? meta.publishKey : '',
+      // R2 sync related fields (ensure shape stability across loads)
+      r2Sync: typeof meta?.r2Sync === 'boolean' ? meta.r2Sync : false,
+      lastPushAt: typeof meta?.lastPushAt === 'number' ? meta.lastPushAt : null,
+      lastPushHash: typeof meta?.lastPushHash === 'string' ? meta.lastPushHash : null,
+      lastRemoteTimestamp: typeof meta?.lastRemoteTimestamp === 'number' ? meta.lastRemoteTimestamp : (typeof meta?.saved === 'number' ? meta.saved : 0)
+    });
     const loadMetaForSlug = slug => {
       const raw = localStorage.getItem(metaKeyForSlug(slug));
-      if (!raw) return null;
+      if (!raw) return normalizeMetaShape(null, slug);
       try {
-        return JSON.parse(raw);
+        return normalizeMetaShape(JSON.parse(raw), slug);
       } catch (error) {
-        return null;
+        return normalizeMetaShape(null, slug);
       }
     };
+    let docMeta = normalizeMetaShape(loadMetaForSlug(activeSlug), activeSlug);
 
     const DATA_EXPORT_VERSION = 1;
     const IMPORT_CONFIRM_MESSAGE =
@@ -2338,7 +2678,9 @@ ${body}
         const html = typeof entry.html === 'string' && entry.html.trim() ? entry.html : '<p><br></p>';
         localStorage.setItem(key, html);
         const saved = typeof entry.meta?.saved === 'number' ? entry.meta.saved : Date.now();
-        localStorage.setItem(metaKeyForSlug(slug), JSON.stringify({ slug, saved }));
+        const importedMeta = normalizeMetaShape(entry.meta, slug);
+        importedMeta.saved = saved;
+        localStorage.setItem(metaKeyForSlug(slug), JSON.stringify(importedMeta));
       });
     };
     const applyImportedDictionary = dictionary => {
@@ -2500,15 +2842,26 @@ ${body}
     };
 
     const persist = () => {
+      if (isReadOnlyView) return;
       localStorage.setItem(storageKey, editor.innerHTML);
       const now = Date.now();
       lastSavedAt = now;
-      localStorage.setItem(metaKey, JSON.stringify({ slug: activeSlug, saved: now }));
+      docMeta.slug = activeSlug;
+      docMeta.saved = now;
+      localStorage.setItem(metaKey, JSON.stringify(docMeta));
       statusNum.textContent = 'NUM';
       updateSavedNote();
+      triggerCollabSync();
+      // Schedule a debounced R2 push after persisting local changes
+      try {
+        scheduleR2Push();
+      } catch (e) {
+        console.warn('R2 push scheduling failed', e);
+      }
     };
 
     const scheduleSave = () => {
+      if (isReadOnlyView) return;
       clearTimeout(saveTimer);
       saveTimer = setTimeout(persist, 400);
     };
@@ -2521,6 +2874,7 @@ ${body}
         editor.innerHTML = '<p><br></p>';
       }
       const meta = loadMetaForSlug(activeSlug);
+      docMeta = meta;
       lastSavedAt = meta?.saved ?? null;
       updateSavedNote();
     };
@@ -2557,6 +2911,7 @@ ${body}
       statusLine.textContent = `Ln ${line}`;
       statusCol.textContent = `Col ${col}`;
       statusWords.textContent = `Words ${wordCount}`;
+      updateSyncIndicators();
     };
 
     const BLOCK_TAGS = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'LI', 'UL', 'OL']);
@@ -3163,6 +3518,34 @@ ${body}
         case 'share':
           shareDocument();
           break;
+        case 'share-server':
+          openServerModal();
+          break;
+        case 'r2-push':
+          flashNote('Pushing to R2...');
+          try {
+            await handleR2Push();
+          } catch (e) {
+            console.warn('R2 push action failed', e);
+          }
+          break;
+        case 'r2-pull':
+          flashNote('Pulling from R2...');
+          try {
+            await handleR2Pull();
+          } catch (e) {
+            console.warn('R2 pull action failed', e);
+          }
+          break;
+        case 'r2-settings':
+          openR2Modal();
+          break;
+        case 'share-collab':
+          openCollabModal();
+          break;
+        case 'share-publish':
+          openPublishModal();
+          break;
         case 'page-break':
           insertPageBreak();
           break;
@@ -3200,6 +3583,9 @@ ${body}
           if (!aiToolbarButton?.disabled) {
             handleAiShortcut();
           }
+          break;
+        case 'quick-fix':
+          await handleQuickFix();
           break;
         case 'undo':
           document.execCommand('undo');
@@ -4059,12 +4445,18 @@ ${body}
           showNewDocModal();
           handled = true;
           break;
-        case 't':
-          if (event.shiftKey) {
-            insertTask();
-            handled = true;
-          }
-          break;
+          case 't':
+            if (event.shiftKey) {
+              insertTask();
+              handled = true;
+            }
+            break;
+          case 'f':
+            if (event.shiftKey) {
+              performAppAction('quick-fix');
+              handled = true;
+            }
+            break;
           case 'p':
             if (event.altKey && !event.shiftKey) {
               setFormatBlock('p');
@@ -4274,6 +4666,826 @@ ${body}
       }
     };
 
+    const appBaseUrl = `${window.location.origin}${window.location.pathname}`;
+    const buildCollabShareUrl = () => {
+      if (!shareServerEndpoint || !docMeta.collabCode) return '';
+      const params = new URLSearchParams();
+      params.set('d', activeSlug);
+      params.set('cc', docMeta.collabCode);
+      params.set('s', shareServerEndpoint);
+      return `${appBaseUrl}?${params.toString()}`;
+    };
+    const buildPublishShareUrl = () => {
+      if (!shareServerEndpoint || !docMeta.publishKey) return '';
+      const params = new URLSearchParams();
+      params.set('d', activeSlug);
+      params.set('pk', docMeta.publishKey);
+      params.set('s', shareServerEndpoint);
+      return `${appBaseUrl}?${params.toString()}`;
+    };
+    const copyToClipboard = async value => {
+      if (!value) return false;
+      try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(value);
+        } else {
+          const tempTextarea = document.createElement('textarea');
+          tempTextarea.value = value;
+          tempTextarea.style.position = 'absolute';
+          tempTextarea.style.opacity = '0';
+          document.body.appendChild(tempTextarea);
+          tempTextarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempTextarea);
+        }
+        flashNote('Link copied to clipboard');
+        return true;
+      } catch (error) {
+        console.warn('Copy failed', error);
+        flashNote('Unable to copy link');
+        return false;
+      }
+    };
+
+    const updateServerState = value => {
+      shareServerEndpoint = value;
+      if (value) {
+        localStorage.setItem(shareServerStorageKey, value);
+      } else {
+        localStorage.removeItem(shareServerStorageKey);
+      }
+      updateCollabLinkField();
+      updatePublishLinkField();
+      refreshCollabSync();
+    };
+
+    const openServerModal = () => {
+      if (!serverModalOverlay) return;
+      serverUrlInput.value = shareServerEndpoint;
+      serverWarning.textContent = '';
+      serverModalOverlay.classList.add('active');
+      serverModalOverlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => serverUrlInput?.focus(), 0);
+    };
+
+    const closeServerModal = () => {
+      if (!serverModalOverlay) return;
+      serverModalOverlay.classList.remove('active');
+      serverModalOverlay.setAttribute('aria-hidden', 'true');
+      serverWarning.textContent = '';
+      focusEditor();
+    };
+
+    const handleServerFormSubmit = event => {
+      event.preventDefault();
+      const value = normalizeServerValue(serverUrlInput.value);
+      updateServerState(value);
+      flashNote(value ? 'Server saved' : 'Server cleared');
+      closeServerModal();
+    };
+
+    const handleClearServerEndpoint = () => {
+      updateServerState('');
+      serverUrlInput.value = '';
+      serverWarning.textContent = 'Server cleared';
+    };
+
+    const updateCollabLinkField = () => {
+      if (!collabLinkInput) return;
+      const link = buildCollabShareUrl();
+      collabLinkInput.value = link || 'Set a server and collab code';
+      if (copyCollabButton) {
+        copyCollabButton.disabled = !link;
+      }
+    };
+
+    const openCollabModal = () => {
+      if (!collabModalOverlay) return;
+      collabInput.value = docMeta.collabCode;
+      collabWarning.textContent = '';
+      updateCollabLinkField();
+      collabModalOverlay.classList.add('active');
+      collabModalOverlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => collabInput?.focus(), 0);
+    };
+
+    const closeCollabModal = () => {
+      if (!collabModalOverlay) return;
+      collabModalOverlay.classList.remove('active');
+      collabModalOverlay.setAttribute('aria-hidden', 'true');
+      collabWarning.textContent = '';
+      focusEditor();
+    };
+
+    const handleCollabFormSubmit = event => {
+      event.preventDefault();
+      const code = normalizeCollabCode(collabInput.value);
+      if (!code) {
+        collabWarning.textContent = 'Enter a Collab Code.';
+        return;
+      }
+      collabWarning.textContent = '';
+      docMeta.collabCode = code;
+      persist();
+      flashNote('Collab code saved');
+      updateCollabLinkField();
+      refreshCollabSync();
+      closeCollabModal();
+    };
+
+    const handleClearCollabCode = () => {
+      docMeta.collabCode = '';
+      persist();
+      collabWarning.textContent = '';
+      flashNote('Collab code cleared');
+      updateCollabLinkField();
+      refreshCollabSync();
+    };
+
+    const handleCopyCollabLink = () => {
+      const link = buildCollabShareUrl();
+      if (!link) {
+        collabWarning.textContent = 'Set the server and code to build a link.';
+        return;
+      }
+      collabWarning.textContent = '';
+      copyToClipboard(link);
+    };
+
+    const updatePublishLinkField = () => {
+      if (!publishLinkInput) return;
+      const link = buildPublishShareUrl();
+      publishLinkInput.value = link || 'Publish the document to generate a read-only link';
+      if (copyPublishButton) {
+        copyPublishButton.disabled = !link;
+      }
+    };
+
+    const openPublishModal = () => {
+      if (!publishModalOverlay) return;
+      publishWarning.textContent = '';
+      updatePublishLinkField();
+      if (unpublishButton) {
+        unpublishButton.disabled = !docMeta.publishKey;
+        unpublishButton.style.display = docMeta.publishKey ? '' : 'none';
+      }
+      publishModalOverlay.classList.add('active');
+      publishModalOverlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => publishLinkInput?.focus(), 0);
+    };
+
+    const closePublishModal = () => {
+      if (!publishModalOverlay) return;
+      publishModalOverlay.classList.remove('active');
+      publishModalOverlay.setAttribute('aria-hidden', 'true');
+      publishWarning.textContent = '';
+      focusEditor();
+    };
+
+    const generatePublishKey = () => {
+      if (window.crypto?.randomUUID) {
+        return window.crypto.randomUUID();
+      }
+      const array = new Uint8Array(16);
+      window.crypto.getRandomValues(array);
+      return Array.from(array, byte => byte.toString(36).padStart(2, '0')).join('');
+    };
+
+    const handlePublishAction = async () => {
+      if (!shareServerEndpoint) {
+        publishWarning.textContent = 'Set a Worker server before publishing.';
+        return;
+      }
+      const key = docMeta.publishKey || generatePublishKey();
+      try {
+        await postToWorker({
+          action: 'publish',
+          slug: activeSlug,
+          publishKey: key,
+          content: editor.innerHTML.trim() || '<p><br></p>'
+        });
+        docMeta.publishKey = key;
+        persist();
+        publishWarning.textContent = '';
+        flashNote('Document published');
+        updatePublishLinkField();
+        if (unpublishButton) {
+          unpublishButton.disabled = false;
+          unpublishButton.style.display = '';
+        }
+      } catch (error) {
+        console.warn('Publish failed', error);
+        publishWarning.textContent = 'Unable to publish document.';
+      }
+    };
+
+    const handleUnpublishAction = async () => {
+      if (!shareServerEndpoint) {
+        publishWarning.textContent = 'Set a Worker server before unpublishing.';
+        return;
+      }
+      if (!docMeta.publishKey) {
+        publishWarning.textContent = 'Document is not published.';
+        return;
+      }
+      try {
+        await postToWorker({ action: 'unpublish', slug: activeSlug, publishKey: docMeta.publishKey });
+        docMeta.publishKey = '';
+        persist();
+        publishWarning.textContent = '';
+        flashNote('Document unpublished');
+        updatePublishLinkField();
+        if (unpublishButton) {
+          unpublishButton.disabled = true;
+          unpublishButton.style.display = 'none';
+        }
+      } catch (error) {
+        console.warn('Unpublish failed', error);
+        publishWarning.textContent = 'Unable to unpublish document.';
+      }
+    };
+
+    const handleCopyPublishLink = () => {
+      const link = buildPublishShareUrl();
+      if (!link) {
+        publishWarning.textContent = 'Publish the document before copying.';
+        return;
+      }
+      publishWarning.textContent = '';
+      copyToClipboard(link);
+    };
+
+    const postToWorker = async payload => {
+      if (!shareServerEndpoint) {
+        throw new Error('No worker server configured');
+      }
+      const response = await fetch(shareServerEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(body || `Worker responded ${response.status}`);
+      }
+      return response.json();
+    };
+
+    let lastPushAt = null;
+    let lastPullAt = null;
+    let lastRemoteTimestamp = docMeta.saved || 0;
+    let collabSyncTimer = null;
+    let collabSyncLock = false;
+    let collabSyncPending = false;
+
+    // R2 config keys
+    const r2ConfigStorageKey = 'writer98-r2-config';
+
+    const loadR2Config = () => {
+      try {
+        const raw = localStorage.getItem(r2ConfigStorageKey);
+        if (!raw) return { bucket: '', key: 'writer98-export.json', strategy: 'overwrite' };
+        return JSON.parse(raw);
+      } catch (e) {
+        return { bucket: '', key: 'writer98-export.json', strategy: 'overwrite' };
+      }
+    };
+
+    const saveR2Config = cfg => {
+      try {
+        localStorage.setItem(r2ConfigStorageKey, JSON.stringify(cfg));
+      } catch (e) {
+        console.warn('Unable to save R2 config', e);
+      }
+    };
+
+    const openR2Modal = () => {
+      const cfg = loadR2Config();
+      r2BucketInput.value = cfg.bucket || '';
+      r2KeyInput.value = cfg.key || 'writer98-export.json';
+      r2StrategySelect.value = cfg.strategy || 'overwrite';
+      r2AutoSyncCheckbox.checked = Boolean(docMeta?.r2Sync);
+      // Load stored creds if present (optional - user choice)
+      const storedCreds = (() => {
+        try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; }
+      })();
+      if (storedCreds) {
+        r2AccountIdInput.value = storedCreds.accountId || '';
+        r2AccessIdInput.value = storedCreds.accessKeyId || '';
+        r2SecretKeyInput.value = storedCreds.secretAccessKey || '';
+        r2RememberCredsCheckbox.checked = true;
+      } else {
+        r2AccountIdInput.value = '';
+        r2AccessIdInput.value = '';
+        r2SecretKeyInput.value = '';
+        r2RememberCredsCheckbox.checked = false;
+      }
+      r2Warning.textContent = '';
+      r2ModalOverlay.classList.add('active');
+      r2ModalOverlay.setAttribute('aria-hidden', 'false');
+      setTimeout(() => r2BucketInput?.focus(), 0);
+    };
+
+    const closeR2Modal = () => {
+      r2ModalOverlay.classList.remove('active');
+      r2ModalOverlay.setAttribute('aria-hidden', 'true');
+      r2Warning.textContent = '';
+      focusEditor();
+    };
+
+    closeR2Button?.addEventListener('click', closeR2Modal);
+    cancelR2Button?.addEventListener('click', closeR2Modal);
+    r2ModalOverlay?.addEventListener('click', event => {
+      if (event.target === r2ModalOverlay) closeR2Modal();
+    });
+
+    const r2Config = loadR2Config();
+
+    r2Form?.addEventListener('submit', event => {
+      event.preventDefault();
+      const cfg = { bucket: r2BucketInput.value.trim(), key: r2KeyInput.value.trim() || 'writer98-export.json', strategy: r2StrategySelect.value };
+      saveR2Config(cfg);
+      // handle optional credential storage
+      if (r2RememberCredsCheckbox?.checked) {
+        const creds = { accountId: r2AccountIdInput.value.trim(), accessKeyId: r2AccessIdInput.value.trim(), secretAccessKey: r2SecretKeyInput.value };
+        try { localStorage.setItem('writer98-r2-creds', JSON.stringify(creds)); } catch (e) { console.warn('Unable to save R2 creds', e); }
+      } else {
+        localStorage.removeItem('writer98-r2-creds');
+      }
+      docMeta.r2Sync = Boolean(r2AutoSyncCheckbox.checked);
+      persist();
+      flashNote('R2 settings saved');
+      refreshR2Sync();
+      closeR2Modal();
+    });
+
+    const updateR2SyncIndicators = () => {
+      updateSyncIndicators();
+    };
+
+    let r2SyncTimer = null;
+    const r2SyncIntervalMs = 30000; // 30s for example
+    let r2PushTimer = null;
+    const r2PushDebounceMs = 2000;
+
+    const startR2SyncTimer = () => {
+      if (r2SyncTimer) return;
+      r2SyncTimer = setInterval(() => {
+        if (docMeta?.r2Sync) scheduleR2Push();
+      }, r2SyncIntervalMs);
+    };
+
+    const stopR2SyncTimer = () => {
+      if (!r2SyncTimer) return;
+      clearInterval(r2SyncTimer);
+      r2SyncTimer = null;
+    };
+
+    const refreshR2Sync = () => {
+      const cfg = loadR2Config();
+      if (docMeta?.r2Sync && cfg.bucket) {
+        startR2SyncTimer();
+      } else {
+        stopR2SyncTimer();
+      }
+    };
+
+    // Use postToWorker to proxy R2 operations via the configured worker server
+    const syncWithR2 = async () => {
+      const cfg = loadR2Config();
+      if (!cfg?.bucket || !cfg?.key) {
+        r2Warning.textContent = 'R2 bucket/key not configured.';
+        return;
+      }
+      try {
+        const payload = buildDataExportPayload();
+        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        let resp;
+        if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
+          try {
+            await clientSideR2Put({ accountId: storedCreds.accountId, bucket: cfg.bucket, key: cfg.key, accessKeyId: storedCreds.accessKeyId, secretAccessKey: storedCreds.secretAccessKey, payload });
+            resp = { ok: true, updatedAt: Date.now() };
+          } catch (err) {
+            console.warn('R2 client-side sync put failed', err);
+            resp = null;
+          }
+        }
+        if (!resp) resp = await postToWorker({ action: 'r2-push', bucket: cfg.bucket, key: cfg.key, strategy: cfg.strategy, payload });
+        if (resp && resp.ok) {
+          lastPushAt = Date.now();
+          // record lastPushHash if worker returned it
+          try {
+            if (resp.lastPushHash) docMeta.lastPushHash = resp.lastPushHash;
+          } catch (e) {}
+        }
+        updateR2SyncIndicators();
+      } catch (error) {
+        console.warn('R2 sync failed', error);
+      }
+    };
+
+    // Debounced scheduling for R2 pushes; computes payload hash to avoid redundant writes
+    const computeSHA256Hex = async str => {
+      const data = new TextEncoder().encode(str);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    };
+
+    const doR2Push = async () => {
+      const cfg = loadR2Config();
+      if (!cfg?.bucket || !cfg?.key) {
+        r2Warning.textContent = 'R2 bucket/key not configured.';
+        return;
+      }
+      try {
+        const payload = buildDataExportPayload();
+        const payloadText = JSON.stringify(payload);
+        const payloadHash = await computeSHA256Hex(payloadText);
+        if (docMeta.lastPushHash && docMeta.lastPushHash === payloadHash) {
+          // nothing changed since last successful push
+          return;
+        }
+        // Try client-side first
+        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        let resp = null;
+        if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
+          try {
+            await clientSideR2Put({ accountId: storedCreds.accountId, bucket: cfg.bucket, key: cfg.key, accessKeyId: storedCreds.accessKeyId, secretAccessKey: storedCreds.secretAccessKey, payload });
+            resp = { ok: true, updatedAt: Date.now(), lastPushHash: payloadHash };
+          } catch (err) {
+            console.warn('Client-side R2 put failed', err);
+            resp = null;
+          }
+        }
+        if (!resp) {
+          // worker should return lastPushHash on success when possible
+          resp = await postToWorker({ action: 'r2-push', bucket: cfg.bucket, key: cfg.key, strategy: cfg.strategy, payload, payloadHash });
+        }
+        if (!resp || !resp.ok) {
+          r2Warning.textContent = resp?.error || 'Push failed';
+          return;
+        }
+        docMeta.lastPushHash = payloadHash;
+        docMeta.lastPushAt = Date.now();
+        persist();
+        lastPushAt = Date.now();
+        updateR2SyncIndicators();
+        flashNote('Pushed to R2');
+      } catch (error) {
+        console.warn('R2 push error', error);
+        r2Warning.textContent = 'Unable to push to R2';
+      }
+    };
+
+    const scheduleR2Push = (delay = r2PushDebounceMs) => {
+      if (!docMeta?.r2Sync) return;
+      clearTimeout(r2PushTimer);
+      r2PushTimer = setTimeout(() => {
+        doR2Push();
+      }, delay);
+    };
+
+    const handleR2Push = async () => {
+      const cfg = loadR2Config();
+      if (!cfg?.bucket) {
+        r2Warning.textContent = 'Bucket required';
+        return;
+      }
+      try {
+        const payload = buildDataExportPayload();
+        // If credentials are stored locally, attempt direct client-side upload using SigV4 (unsafe for production)
+        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        let resp;
+        if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
+          try {
+            await clientSideR2Put({ accountId: storedCreds.accountId, bucket: cfg.bucket, key: cfg.key, accessKeyId: storedCreds.accessKeyId, secretAccessKey: storedCreds.secretAccessKey, payload });
+            resp = { ok: true, updatedAt: Date.now() };
+          } catch (err) {
+            console.warn('Client-side R2 put failed', err);
+            resp = null;
+          }
+        }
+        // Fallback to worker proxy if available
+        if (!resp) {
+          resp = await postToWorker({ action: 'r2-push', bucket: cfg.bucket, key: cfg.key, strategy: cfg.strategy, payload });
+        }
+        if (!resp || !resp.ok) {
+          r2Warning.textContent = resp?.error || 'Push failed';
+          return;
+        }
+        // update docMeta with hash if present
+        try { if (resp.lastPushHash) docMeta.lastPushHash = resp.lastPushHash; } catch (e) {}
+        docMeta.lastPushAt = Date.now();
+        persist();
+        lastPushAt = Date.now();
+        updateR2SyncIndicators();
+        flashNote('Pushed to R2');
+      } catch (error) {
+        console.warn('R2 push error', error);
+        r2Warning.textContent = 'Unable to push to R2';
+      }
+    };
+
+    const handleR2Pull = async () => {
+      const cfg = loadR2Config();
+      if (!cfg?.bucket) {
+        r2Warning.textContent = 'Bucket required';
+        return;
+      }
+      try {
+        // Try client-side GET if creds stored, else use worker
+        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        let resp;
+        if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
+          try {
+            const text = await clientSideR2Get({ accountId: storedCreds.accountId, bucket: cfg.bucket, key: cfg.key, accessKeyId: storedCreds.accessKeyId, secretAccessKey: storedCreds.secretAccessKey });
+            resp = { ok: true, payload: JSON.parse(text), updatedAt: Date.now() };
+          } catch (err) {
+            console.warn('Client-side R2 get failed', err);
+            resp = null;
+          }
+        }
+        if (!resp) {
+          resp = await postToWorker({ action: 'r2-pull', bucket: cfg.bucket, key: cfg.key });
+        }
+        if (!resp || !resp.ok) {
+          r2Warning.textContent = resp?.error || 'Pull failed';
+          return;
+        }
+        const parsed = resp.payload;
+        if (!parsed || parsed.version !== DATA_EXPORT_VERSION) {
+          r2Warning.textContent = 'Incompatible payload version from R2';
+          return;
+        }
+        if (!confirm(IMPORT_CONFIRM_MESSAGE)) return;
+
+        // Temporarily unload the current document so users see the incoming changes on reload
+        try {
+          // Make editor read-only and show a loading placeholder
+          editor.blur();
+          editor.setAttribute('contenteditable', 'false');
+          const prevContent = editor.innerHTML;
+          editor.innerHTML = '<p><em>Loading document from R2...</em></p>';
+          // clear local draft storage and apply imported data
+          clearDraftStorage();
+          applyImportedDrafts(parsed.drafts);
+          applyImportedDictionary(parsed.prefs?.dictionary);
+          applyImportedPrefs(parsed.prefs);
+          lastPullAt = Date.now();
+          updateR2SyncIndicators();
+          flashNote('Pulled data from R2. Reloading...');
+          // Navigate to the same draft slug to ensure it loads from updated storage
+          setTimeout(() => {
+            // restore editable state before navigation (navigation will reload anyway)
+            editor.removeAttribute('contenteditable');
+            window.location.href = `${window.location.pathname}?d=${encodeURIComponent(activeSlug)}`;
+          }, 400);
+        } catch (err) {
+          console.warn('Apply imported drafts failed', err);
+          // Attempt to restore previous editor content and state
+          try {
+            editor.innerHTML = prevContent || '<p><br></p>';
+          } catch (e) {}
+          editor.removeAttribute('contenteditable');
+          r2Warning.textContent = 'Unable to apply pulled data';
+        }
+      } catch (error) {
+        console.warn('R2 pull failed', error);
+        r2Warning.textContent = 'Unable to pull from R2';
+      }
+    };
+
+    r2PushButton?.addEventListener('click', handleR2Push);
+    r2PullButton?.addEventListener('click', handleR2Pull);
+
+    // Polling for remote changes (auto-pull) -------------------------------------------------
+    let r2PullLock = false;
+    const pollR2ForChanges = async () => {
+      if (!docMeta?.r2Sync) return;
+      if (r2PullLock) return;
+      const cfg = loadR2Config();
+      if (!cfg?.bucket || !cfg?.key) return;
+      r2PullLock = true;
+      try {
+        const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
+        let resp = null;
+        if (storedCreds && storedCreds.accessKeyId && storedCreds.secretAccessKey && storedCreds.accountId) {
+          try {
+            const text = await clientSideR2Get({ accountId: storedCreds.accountId, bucket: cfg.bucket, key: cfg.key, accessKeyId: storedCreds.accessKeyId, secretAccessKey: storedCreds.secretAccessKey });
+            resp = { ok: true, payload: JSON.parse(text) };
+          } catch (err) {
+            console.warn('Client-side R2 get failed', err);
+            resp = null;
+          }
+        }
+        if (!resp) {
+          try {
+            resp = await postToWorker({ action: 'r2-pull', bucket: cfg.bucket, key: cfg.key });
+          } catch (err) {
+            console.warn('Worker R2 pull failed', err);
+            resp = null;
+          }
+        }
+        if (!resp || !resp.ok) return;
+        const payload = resp.payload;
+        if (!payload || payload.version !== DATA_EXPORT_VERSION) return;
+        const remoteDraft = Array.isArray(payload.drafts) ? payload.drafts.find(d => d.slug === activeSlug) : null;
+        if (!remoteDraft) return;
+        const remoteSaved = Number(remoteDraft.meta?.saved) || (payload.exportedAt ? Date.parse(payload.exportedAt) : 0) || 0;
+        const localSaved = Number(docMeta.saved) || 0;
+        // If remote is newer, apply it (last-writer-wins)
+        if (remoteSaved > localSaved) {
+          // Apply only current draft to avoid wholesale overwrite
+          const remoteHtml = typeof remoteDraft.html === 'string' ? remoteDraft.html : (typeof remoteDraft.content === 'string' ? remoteDraft.content : null);
+          if (remoteHtml) {
+            editor.innerHTML = ensureEditorContent(remoteHtml);
+            docMeta.saved = remoteSaved;
+            docMeta.lastRemoteTimestamp = remoteSaved;
+            lastPullAt = Date.now();
+            persist();
+            updateStatus();
+            flashNote('Pulled remote changes from R2');
+          }
+        }
+      } catch (error) {
+        console.warn('R2 poll failed', error);
+      } finally {
+        r2PullLock = false;
+      }
+    };
+
+    // Minimal client-side SigV4 helpers for R2 (WARNING: exposes secret in browser)
+    const toHex = u8 => Array.from(u8).map(b => b.toString(16).padStart(2, '0')).join('');
+    const sha256Hex = async s => {
+      const enc = new TextEncoder();
+      const h = await crypto.subtle.digest('SHA-256', enc.encode(s));
+      return toHex(new Uint8Array(h));
+    };
+    const hmac = async (key, msg) => {
+      const enc = new TextEncoder();
+      const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(msg));
+      return new Uint8Array(sig);
+    };
+
+    const clientSideSignV4 = async ({ method='PUT', url, region='auto', service='s3', accessKeyId, secretAccessKey, body='' }) => {
+      const now = new Date();
+      const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+      const dateStamp = amzDate.slice(0,8);
+      const u = new URL(url);
+      const host = u.host;
+      const path = u.pathname;
+      const payloadHash = await sha256Hex(body);
+      const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
+      const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+      const canonicalRequest = [method, path, '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
+      const canonicalRequestHash = await sha256Hex(canonicalRequest);
+      const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+      const stringToSign = ['AWS4-HMAC-SHA256', amzDate, credentialScope, canonicalRequestHash].join('\n');
+
+      const enc = new TextEncoder();
+      const kDate = await hmac(enc.encode('AWS4' + secretAccessKey), dateStamp);
+      const kRegion = await hmac(kDate, region);
+      const kService = await hmac(kRegion, service);
+      const kSigning = await hmac(kService, 'aws4_request');
+      const signature = toHex(await hmac(kSigning, stringToSign));
+      const authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+      return { headers: { Authorization: authorization, 'x-amz-date': amzDate, 'x-amz-content-sha256': payloadHash } };
+    };
+
+    const clientSideR2Put = async ({ accountId, bucket, key, accessKeyId, secretAccessKey, payload }) => {
+      const body = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      const url = `https://${accountId}.r2.cloudflarestorage.com/${bucket}/${encodeURIComponent(key)}`;
+      const sig = await clientSideSignV4({ method: 'PUT', url, region: 'auto', service: 's3', accessKeyId, secretAccessKey, body });
+      const headers = { ...sig.headers, 'Content-Type': 'application/json' };
+      const res = await fetch(url, { method: 'PUT', headers, body });
+      if (!res.ok) throw new Error('R2 PUT failed: ' + res.status);
+      return res;
+    };
+
+    const clientSideR2Get = async ({ accountId, bucket, key, accessKeyId, secretAccessKey }) => {
+      const url = `https://${accountId}.r2.cloudflarestorage.com/${bucket}/${encodeURIComponent(key)}`;
+      const sig = await clientSideSignV4({ method: 'GET', url, region: 'auto', service: 's3', accessKeyId, secretAccessKey, body: '' });
+      const headers = { ...sig.headers };
+      const res = await fetch(url, { method: 'GET', headers });
+      if (!res.ok) throw new Error('R2 GET failed: ' + res.status);
+      return res.text();
+    };
+
+
+    const updateSyncIndicators = () => {
+      if (statusPushIndicator) {
+        if (lastPushAt) {
+          statusPushIndicator.textContent = `Pushed ${relativeTime(lastPushAt)}`;
+          statusPushIndicator.hidden = false;
+        } else {
+          statusPushIndicator.textContent = '';
+          statusPushIndicator.hidden = true;
+        }
+      }
+      if (statusPullIndicator) {
+        if (lastPullAt) {
+          statusPullIndicator.textContent = `Pulled ${relativeTime(lastPullAt)}`;
+          statusPullIndicator.hidden = false;
+        } else {
+          statusPullIndicator.textContent = '';
+          statusPullIndicator.hidden = true;
+        }
+      }
+    };
+
+    const shouldRunCollabSync = () => Boolean(shareServerEndpoint && docMeta.collabCode && !isReadOnlyView);
+
+    const startCollabSyncTimer = () => {
+      if (collabSyncTimer) return;
+      collabSyncTimer = setInterval(() => {
+        syncWithWorker();
+      }, collabSyncIntervalMs);
+    };
+
+    const stopCollabSyncTimer = () => {
+      if (!collabSyncTimer) return;
+      clearInterval(collabSyncTimer);
+      collabSyncTimer = null;
+    };
+
+    const refreshCollabSync = () => {
+      if (shouldRunCollabSync()) {
+        startCollabSyncTimer();
+        syncWithWorker();
+      } else {
+        stopCollabSyncTimer();
+      }
+    };
+
+    const syncWithWorker = async () => {
+      if (!shouldRunCollabSync()) return;
+      if (collabSyncLock) {
+        collabSyncPending = true;
+        return;
+      }
+      collabSyncLock = true;
+      collabSyncPending = false;
+      try {
+        const payload = {
+          action: 'sync',
+          slug: activeSlug,
+          collabCode: docMeta.collabCode,
+          content: editor.innerHTML.trim() || '<p><br></p>',
+          updatedAt: Date.now()
+        };
+        const data = await postToWorker(payload);
+        lastPushAt = Date.now();
+        const remoteAt = Number(data?.updatedAt) || 0;
+        const remoteContent = typeof data?.content === 'string' ? data.content : '';
+        if (remoteAt && remoteAt > lastRemoteTimestamp && remoteContent && remoteContent !== editor.innerHTML) {
+          lastRemoteTimestamp = remoteAt;
+          editor.innerHTML = ensureEditorContent(remoteContent);
+          lastPullAt = Date.now();
+          scheduleSave();
+          updateStatus();
+        } else if (remoteAt && remoteAt > lastRemoteTimestamp) {
+          lastRemoteTimestamp = remoteAt;
+          lastPullAt = Date.now();
+        }
+      } catch (error) {
+        console.warn('Collaborative sync failed', error);
+      } finally {
+        collabSyncLock = false;
+        updateSyncIndicators();
+        if (collabSyncPending) {
+          syncWithWorker();
+        }
+      }
+    };
+
+    triggerCollabSync = () => {
+      if (!shouldRunCollabSync()) return;
+      syncWithWorker();
+    };
+
+    const loadPublishedDocument = async () => {
+      if (!viewerPublishKey) return false;
+      if (!shareServerEndpoint) {
+        flashNote('Publish link requires a Worker server (?s=...).');
+        return false;
+      }
+      try {
+        const data = await postToWorker({ action: 'fetch-publish', publishKey: viewerPublishKey });
+        if (typeof data?.content === 'string') {
+          editor.innerHTML = ensureEditorContent(data.content);
+          editor.setAttribute('contenteditable', 'false');
+          statusNote.textContent = 'Published document (read-only)';
+          flashNote('Loaded published document');
+          return true;
+        }
+      } catch (error) {
+        console.warn('Unable to load published document', error);
+        flashNote('Unable to load published document');
+      }
+      return false;
+    };
+
     const downloadDocument = () => {
       const filename = getDownloadFilename();
       const rtfContent = buildRTFDocument();
@@ -4464,17 +5676,51 @@ ${body}
 
     const decodeSlug = key => decodeURIComponent(key.slice(docPrefix.length));
 
-    const createOpenRow = (slug, metaText, isStarter = false) => {
+    const createShareBadges = meta => {
+      if (!meta) return null;
+      const container = document.createElement('div');
+      container.className = 'open-draft-badges';
+      const addBadge = (label, iconClass, variant) => {
+        if (!label) return;
+        const badge = document.createElement('span');
+        badge.className = `draft-share-pill ${variant}`;
+        badge.setAttribute('title', label);
+        const icon = document.createElement('i');
+        icon.className = iconClass;
+        icon.setAttribute('aria-hidden', 'true');
+        const text = document.createElement('span');
+        text.textContent = label;
+        badge.appendChild(icon);
+        badge.appendChild(text);
+        container.appendChild(badge);
+      };
+      if (meta.collabCode) {
+        addBadge('Collab', 'fa-solid fa-users', 'collab');
+      }
+      if (meta.publishKey) {
+        addBadge('Published', 'fa-solid fa-eye', 'publish');
+      }
+      return container.children.length ? container : null;
+    };
+
+    const createOpenRow = (slug, metaText, metaData = null, isStarter = false) => {
       const row = document.createElement('div');
       row.className = 'open-draft-row';
       const nameWrap = document.createElement('div');
+      const titleRow = document.createElement('div');
+      titleRow.className = 'open-draft-name-row';
       const name = document.createElement('div');
       name.className = 'open-draft-name';
       name.textContent = formatLabel(slug);
+      titleRow.appendChild(name);
+      const badges = createShareBadges(metaData);
+      if (badges) {
+        titleRow.appendChild(badges);
+      }
       const meta = document.createElement('div');
       meta.className = 'open-draft-meta';
       meta.textContent = metaText;
-      nameWrap.appendChild(name);
+      nameWrap.appendChild(titleRow);
       nameWrap.appendChild(meta);
       const actions = document.createElement('div');
       actions.className = 'open-draft-actions';
@@ -4508,11 +5754,11 @@ ${body}
 
     const renderDraftList = () => {
       openListEl.innerHTML = '';
-      openListEl.appendChild(createOpenRow('untitled', 'Start a new document', true));
+      openListEl.appendChild(createOpenRow('untitled', 'Start a new document', null, true));
       const entries = openDraftKeys().map(key => {
         const slug = decodeSlug(key);
         const meta = loadMetaForSlug(slug);
-        return { slug, saved: meta?.saved || 0 };
+        return { slug, meta, saved: meta.saved || 0 };
       });
       const activeEntries = entries.filter(entry => entry.slug !== 'untitled');
       if (!activeEntries.length) {
@@ -4525,7 +5771,7 @@ ${body}
       activeEntries.sort((a, b) => b.saved - a.saved || a.slug.localeCompare(b.slug));
       activeEntries.forEach(entry => {
         const label = entry.saved ? `Saved ${relativeTime(entry.saved)}` : 'No saves yet';
-        openListEl.appendChild(createOpenRow(entry.slug, label));
+        openListEl.appendChild(createOpenRow(entry.slug, label, entry.meta));
       });
     };
 
@@ -4549,6 +5795,41 @@ ${body}
         }
       });
     }
+    if (serverModalOverlay) {
+      serverModalOverlay.addEventListener('click', event => {
+        if (event.target === serverModalOverlay) {
+          closeServerModal();
+        }
+      });
+    }
+    serverForm?.addEventListener('submit', handleServerFormSubmit);
+    clearServerButton?.addEventListener('click', handleClearServerEndpoint);
+    cancelServerButton?.addEventListener('click', closeServerModal);
+    closeServerButton?.addEventListener('click', closeServerModal);
+    if (collabModalOverlay) {
+      collabModalOverlay.addEventListener('click', event => {
+        if (event.target === collabModalOverlay) {
+          closeCollabModal();
+        }
+      });
+    }
+    collabForm?.addEventListener('submit', handleCollabFormSubmit);
+    clearCollabButton?.addEventListener('click', handleClearCollabCode);
+    closeCollabButton?.addEventListener('click', closeCollabModal);
+    dismissCollabButton?.addEventListener('click', closeCollabModal);
+    copyCollabButton?.addEventListener('click', handleCopyCollabLink);
+    if (publishModalOverlay) {
+      publishModalOverlay.addEventListener('click', event => {
+        if (event.target === publishModalOverlay) {
+          closePublishModal();
+        }
+      });
+    }
+    publishButton?.addEventListener('click', handlePublishAction);
+    unpublishButton?.addEventListener('click', handleUnpublishAction);
+    copyPublishButton?.addEventListener('click', handleCopyPublishLink);
+    closePublishButton?.addEventListener('click', closePublishModal);
+    dismissPublishButton?.addEventListener('click', closePublishModal);
     copyShareLinkButton?.addEventListener('click', copyShareUrlToClipboard);
     dismissShareButton?.addEventListener('click', closeShareModal);
     closeShareDialogButton?.addEventListener('click', closeShareModal);
@@ -4616,13 +5897,26 @@ ${body}
     updateDraftLabel();
     updateSavedNote();
     window.addEventListener('load', async () => {
-      const sharedLoaded = await loadSharedContent();
-      if (!sharedLoaded) {
+      const publishedLoaded = await (viewerPublishKey ? loadPublishedDocument() : Promise.resolve(false));
+      const sharedLoaded = publishedLoaded ? true : await loadSharedContent();
+      if (!publishedLoaded && !sharedLoaded) {
         restore();
       }
       if (rawMessage) {
         applyRawContent();
       }
+      if (queryCollabCode) {
+        const code = normalizeCollabCode(queryCollabCode);
+        if (code && code !== docMeta.collabCode) {
+          docMeta.collabCode = code;
+          persist();
+          updateCollabLinkField();
+          refreshCollabSync();
+        }
+      }
+      refreshCollabSync();
+      // Start R2 sync timer for this document if enabled
+      refreshR2Sync();
       focusEditor();
       updateStatus();
       updateAiToolbarState();
