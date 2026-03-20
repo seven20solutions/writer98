@@ -1174,8 +1174,8 @@
             <button type="button" data-menu-action="spell">Check spelling</button>
             <button type="button" data-menu-action="quick-fix" style="display:none;"><span class="menu-option">Quick Fix</span><span class="menu-shortcut">CTRL+SHIFT+F</span></button>
             <button type="button" data-menu-action="share">Share document</button>
-            <button type="button" data-menu-action="r2-push">Push to R2</button>
-            <button type="button" data-menu-action="r2-pull">Pull from R2</button>
+            <button type="button" data-menu-action="r2-push">Push</button>
+            <button type="button" data-menu-action="r2-pull">Pull</button>
             <button type="button" data-menu-action="r2-settings">R2 Storage</button>
           </div>
         </div>
@@ -1389,21 +1389,16 @@
             <input id="r2AccessId" type="text" autocomplete="off" placeholder="AKIA..." />
             <label for="r2SecretKey">Secret Access Key</label>
             <input id="r2SecretKey" type="password" autocomplete="new-password" placeholder="Secret" />
-            <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
-              <input id="r2RememberCreds" type="checkbox" />
-              <label for="r2RememberCreds" style="margin:0;">Remember credentials (localStorage)</label>
-            </div>
+            <!-- Remember credentials option removed -->
           </fieldset>
 
-          <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
-            <input id="r2AutoSync" type="checkbox" />
-            <label for="r2AutoSync" style="margin:0;">Keep entries synced with R2 (this document)</label>
-          </div>
+          <!-- Auto-sync option removed -->
 
           <div style="display:flex; gap:8px; margin-top:12px;" class="modal-actions">
-            <button type="button" id="r2Push">Push to R2</button>
-            <button type="button" id="r2Pull">Pull from R2</button>
+            <button type="button" id="r2Push">Push</button>
+            <button type="button" id="r2Pull">Pull</button>
             <button type="submit">Save</button>
+            <button type="button" id="clearR2Creds">Clear</button>
             <button type="button" id="cancelR2Modal">Cancel</button>
           </div>
           <div class="modal-warning" id="r2Warning"></div>
@@ -1693,10 +1688,12 @@
     const r2AccountIdInput = document.getElementById('r2AccountId');
     const r2AccessIdInput = document.getElementById('r2AccessId');
     const r2SecretKeyInput = document.getElementById('r2SecretKey');
-    const r2RememberCredsCheckbox = document.getElementById('r2RememberCreds');
-    const r2AutoSyncCheckbox = document.getElementById('r2AutoSync');
+    // Remember credentials and auto-sync checkboxes removed from UI; do not expose saving credentials from the modal
+    const r2RememberCredsCheckbox = null;
+    const r2AutoSyncCheckbox = null;
     const r2PushButton = document.getElementById('r2Push');
     const r2PullButton = document.getElementById('r2Pull');
+    const clearR2CredsButton = document.getElementById('clearR2Creds');
     const closeR2Button = document.getElementById('closeR2Modal');
     const cancelR2Button = document.getElementById('cancelR2Modal');
     const r2Warning = document.getElementById('r2Warning');
@@ -4988,31 +4985,27 @@ ${body}
       r2BucketInput.value = cfg.bucket || '';
       r2KeyInput.value = cfg.key || 'writer98-export.json';
       r2StrategySelect.value = cfg.strategy || 'overwrite';
-      r2AutoSyncCheckbox.checked = Boolean(docMeta?.r2Sync);
+      // Auto-sync checkbox removed from UI; R2 sync state is shown via status indicators and managed elsewhere
       // Show runtime creds (querystring overrides take precedence) but do not persist them here
       const runtimeCreds = getRuntimeR2Creds();
-      if (runtimeCreds) {
-        r2AccountIdInput.value = runtimeCreds.accountId || '';
-        r2AccessIdInput.value = runtimeCreds.accessKeyId || '';
-        r2SecretKeyInput.value = runtimeCreds.secretAccessKey || '';
-        // If creds came from querystring, make it clear they are not saved by default
-        r2RememberCredsCheckbox.checked = false;
-        if (r2QueryCreds) {
-          r2Warning.textContent = 'Using R2 credentials provided in the URL (runtime only).';
-        }
-      } else {
+        if (runtimeCreds) {
+          r2AccountIdInput.value = runtimeCreds.accountId || '';
+          r2AccessIdInput.value = runtimeCreds.accessKeyId || '';
+          r2SecretKeyInput.value = runtimeCreds.secretAccessKey || '';
+          if (r2QueryCreds) {
+            r2Warning.textContent = 'Using R2 credentials provided in the URL (runtime only).';
+          }
+        } else {
         // fallback to stored creds if present
         const storedCreds = (() => { try { return JSON.parse(localStorage.getItem('writer98-r2-creds') || 'null'); } catch (e) { return null; } })();
-        if (storedCreds) {
-          r2AccountIdInput.value = storedCreds.accountId || '';
-          r2AccessIdInput.value = storedCreds.accessKeyId || '';
-          r2SecretKeyInput.value = storedCreds.secretAccessKey || '';
-          r2RememberCredsCheckbox.checked = true;
-        } else {
+          if (storedCreds) {
+            r2AccountIdInput.value = storedCreds.accountId || '';
+            r2AccessIdInput.value = storedCreds.accessKeyId || '';
+            r2SecretKeyInput.value = storedCreds.secretAccessKey || '';
+          } else {
           r2AccountIdInput.value = '';
           r2AccessIdInput.value = '';
           r2SecretKeyInput.value = '';
-          r2RememberCredsCheckbox.checked = false;
         }
       }
       r2Warning.textContent = '';
@@ -5040,19 +5033,45 @@ ${body}
       event.preventDefault();
       const cfg = { bucket: r2BucketInput.value.trim(), key: r2KeyInput.value.trim() || 'writer98-export.json', strategy: r2StrategySelect.value };
       saveR2Config(cfg);
-      // handle optional credential storage
-      if (r2RememberCredsCheckbox?.checked) {
-        const creds = { accountId: r2AccountIdInput.value.trim(), accessKeyId: r2AccessIdInput.value.trim(), secretAccessKey: r2SecretKeyInput.value };
-        try { localStorage.setItem('writer98-r2-creds', JSON.stringify(creds)); } catch (e) { console.warn('Unable to save R2 creds', e); }
-      } else {
-        localStorage.removeItem('writer98-r2-creds');
-      }
-      docMeta.r2Sync = Boolean(r2AutoSyncCheckbox.checked);
+      // Auto-save entered credentials to localStorage so users don't need to re-enter them.
+      // Do not persist credentials that were provided via the URL (runtime overrides).
+      try {
+        if (!r2QueryCreds) {
+          const creds = { accountId: r2AccountIdInput.value.trim(), accessKeyId: r2AccessIdInput.value.trim(), secretAccessKey: r2SecretKeyInput.value };
+          if (creds.accountId || creds.accessKeyId || creds.secretAccessKey) {
+            try { localStorage.setItem('writer98-r2-creds', JSON.stringify(creds)); } catch (e) { console.warn('Unable to save R2 creds', e); }
+            r2Warning.textContent = 'R2 credentials saved to local storage.';
+          } else {
+            try { localStorage.removeItem('writer98-r2-creds'); } catch (e) { /* ignore */ }
+            r2Warning.textContent = '';
+          }
+        } else {
+          // creds came from URL; do not persist them
+          r2Warning.textContent = 'Using R2 credentials provided in the URL (runtime only).';
+        }
+      } catch (e) { console.warn('R2 creds save error', e); }
+      // r2Sync flag is not edited via the modal (checkbox removed) so preserve existing docMeta.r2Sync
       persist();
       flashNote('R2 settings saved');
       refreshR2Sync();
       closeR2Modal();
     });
+
+    const handleClearR2Creds = () => {
+      try {
+        localStorage.removeItem('writer98-r2-creds');
+        r2AccountIdInput.value = '';
+        r2AccessIdInput.value = '';
+        r2SecretKeyInput.value = '';
+        r2Warning.textContent = 'Saved R2 credentials cleared.';
+        flashNote('Saved R2 credentials cleared');
+      } catch (e) {
+        console.warn('Unable to clear saved R2 creds', e);
+        r2Warning.textContent = 'Unable to clear saved credentials.';
+      }
+    };
+
+    clearR2CredsButton?.addEventListener('click', handleClearR2Creds);
 
     const updateR2SyncIndicators = () => {
       updateSyncIndicators();
