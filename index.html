@@ -946,6 +946,46 @@
         padding-right: 10px;
       }
       .editor { min-height: 360px; font-size: 1.1rem; }
+      /* Mobile: make modals full-screen and anchored to the top for easier thumb reach */
+      .modal-overlay {
+        /* ensure overlay fills screen and anchors modal to top */
+        align-items: flex-start;
+        padding: 0; /* modal content will handle spacing */
+        overflow: auto;
+      }
+
+      .modal-overlay {
+        padding-top: env(safe-area-inset-top, 0);
+      }
+
+      .modal-overlay.active {
+        display: flex;
+      }
+
+      .os9-modal {
+        width: 100%;
+        max-width: 100%;
+        height: calc(100vh - env(safe-area-inset-top, 0));
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .os9-modal .modal-body {
+        /* let the body scroll internally while header stays visible */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        max-height: calc(100vh - 56px - env(safe-area-inset-top, 0)); /* reserve space for header */
+        padding: 1rem 1.25rem 1.25rem;
+      }
+
+      .modal-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
     }
 
     @media (max-height: 399px) {
