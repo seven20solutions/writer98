@@ -1125,6 +1125,24 @@
         break-after: page;
       }
     }
+    /* R2 visual alert states */
+    /* modal + toolbar push */
+    #r2Push.r2-push-alert,
+    [data-action="r2-push"].r2-push-alert {
+      background: linear-gradient(180deg, #c8fde0, #219f56) !important;
+      color: #fff !important;
+      border-color: rgba(0,0,0,0.15) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+    }
+
+    /* modal + toolbar pull */
+    #r2Pull.r2-pull-alert,
+    [data-action="r2-pull"].r2-pull-alert {
+      background: linear-gradient(180deg, #ebe1e1, #d56d6d) !important;
+      color: #fff !important;
+      border-color: rgba(0,0,0,0.15) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+    }
   </style>
 </head>
 <body>
@@ -5069,7 +5087,7 @@ ${body}
 
     const r2Config = loadR2Config();
 
-    r2Form?.addEventListener('submit', event => {
+    r2Form?.addEventListener('submit', async event => {
       event.preventDefault();
       const cfg = { bucket: r2BucketInput.value.trim(), key: r2KeyInput.value.trim() || 'writer98-export.json', strategy: r2StrategySelect.value };
       saveR2Config(cfg);
@@ -5094,6 +5112,8 @@ ${body}
       persist();
       flashNote('R2 settings saved');
       refreshR2Sync();
+      // Run a background HEAD check (non-blocking) after saving in case credentials become available
+      setTimeout(() => runR2HeadCheckAndApply().catch(e => console.warn('initial R2 head check failed', e)), 400);
       closeR2Modal();
     });
 
@@ -5465,6 +5485,174 @@ ${body}
       if (!res.ok) throw new Error('R2 GET failed: ' + res.status);
       return res.text();
     };
+
+    // --- R2 HEAD-check helper -------------------------------------------------
+    /**
+     * Performs a signed HEAD request to the R2 object (if runtime creds available)
+     * and returns metadata that can be used to decide whether remote differs from local.
+     */
+    const checkR2ViaHead = async () => {
+      const cfg = loadR2Config();
+      if (!cfg?.bucket || !cfg?.key) return { ok: false, reason: 'no-config' };
+      const creds = getRuntimeR2Creds();
+      if (!creds || !creds.accountId || !creds.accessKeyId || !creds.secretAccessKey) {
+        return { ok: false, reason: 'no-creds' };
+      }
+      try {
+        const url = `https://${creds.accountId}.r2.cloudflarestorage.com/${cfg.bucket}/${encodeURIComponent(cfg.key)}`;
+        // sign a HEAD request (body empty)
+        const sig = await clientSideSignV4({ method: 'HEAD', url, region: 'auto', service: 's3', accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey, body: '' });
+        const res = await fetch(url, { method: 'HEAD', headers: { ...sig.headers } });
+        if (!res.ok) return { ok: false, status: res.status, reason: 'head-failed' };
+        const metaHash = res.headers.get('x-amz-meta-payload-hash');
+        const etag = res.headers.get('etag');
+        const lastModified = res.headers.get('last-modified');
+        const contentLength = res.headers.get('content-length');
+        const payload = buildDataExportPayload();
+        const localText = JSON.stringify(payload);
+        const localHash = await computeSHA256Hex(localText);
+        // prefer authoritative meta header if present
+        if (metaHash) {
+          return {
+            ok: true,
+            method: 'meta',
+            found: true,
+            remoteMetaHash: metaHash,
+            localHash,
+            equal: metaHash === localHash,
+            etag,
+            lastModified,
+            contentLength
+          };
+        }
+        // fallback heuristic: if etag or lastModified available compare timestamps/hash via etag mismatch
+        return {
+          ok: true,
+          method: 'heuristic',
+          found: true,
+          etag,
+          lastModified,
+          contentLength,
+          localHash,
+          equal: etag ? false : null // unknown equality without payload hash
+        };
+      } catch (err) {
+        console.warn('R2 HEAD check failed', err);
+        return { ok: false, reason: 'network', error: String(err) };
+      }
+    };
+
+    // Visual helpers ----------------------------------------------------------------
+    const r2ToolbarPushButton = document.querySelector('[data-action="r2-push"]');
+    const r2ToolbarPullButton = document.querySelector('[data-action="r2-pull"]');
+
+    const markPushNeeded = () => {
+      try {
+        r2PushButton?.classList.add('r2-push-alert');
+        r2ToolbarPushButton?.classList.add('r2-push-alert');
+        console.info('R2: local edit detected — marked Push needed');
+      } catch (e) { console.warn('R2 markPushNeeded error', e); }
+    };
+
+    const clearPushAlert = () => {
+      try { r2PushButton?.classList.remove('r2-push-alert'); } catch (e) {}
+      try { r2ToolbarPushButton?.classList.remove('r2-push-alert'); } catch (e) {}
+    };
+
+    const markPullAlert = () => {
+      try { r2PullButton?.classList.add('r2-pull-alert'); } catch (e) {}
+      try { r2ToolbarPullButton?.classList.add('r2-pull-alert'); } catch (e) {}
+    };
+
+    const clearPullAlert = () => {
+      try { r2PullButton?.classList.remove('r2-pull-alert'); } catch (e) {}
+      try { r2ToolbarPullButton?.classList.remove('r2-pull-alert'); } catch (e) {}
+    };
+
+    // Replace existing handler bindings with wrappers that clear the visual state immediately
+    if (r2PushButton) {
+      r2PushButton.removeEventListener && r2PushButton.removeEventListener('click', handleR2Push);
+      r2PushButton.addEventListener('click', async event => {
+        clearPushAlert();
+        console.info('R2: Push button clicked — alert cleared, performing push');
+        try { await handleR2Push(); } catch (e) { console.warn('R2 push wrapper failed', e); }
+      });
+    }
+    if (r2PullButton) {
+      r2PullButton.removeEventListener && r2PullButton.removeEventListener('click', handleR2Pull);
+      r2PullButton.addEventListener('click', async event => {
+        clearPullAlert();
+        console.info('R2: Pull button clicked — alert cleared, performing pull');
+        try { await handleR2Pull(); } catch (e) { console.warn('R2 pull wrapper failed', e); }
+      });
+    }
+
+    // Also ensure toolbar buttons clear alerts when clicked (they call performAppAction separately)
+    if (r2ToolbarPushButton) {
+      r2ToolbarPushButton.addEventListener('click', () => { clearPushAlert(); console.info('R2: Toolbar Push clicked - cleared alert'); });
+    }
+    if (r2ToolbarPullButton) {
+      r2ToolbarPullButton.addEventListener('click', () => { clearPullAlert(); console.info('R2: Toolbar Pull clicked - cleared alert'); });
+    }
+
+    // Editor input should mark push-needed state
+    editor.addEventListener('input', () => {
+      markPushNeeded();
+    }, { passive: true });
+
+    // Run HEAD check in safe places: on load (after refreshR2Sync), openR2Modal, and after r2Form submit
+    const runR2HeadCheckAndApply = async () => {
+      try {
+        const info = await checkR2ViaHead();
+        if (!info.ok) {
+          console.info('R2 HEAD-check not available', info);
+          return info;
+        }
+        console.info('R2 HEAD-check result', info);
+        // If meta method and hashes differ, and remote is different -> show pull alert
+        if (info.method === 'meta' && info.found && info.equal === false) {
+          markPullAlert();
+          console.info('R2: remote payload hash differs → Pull marked (remote newer)');
+        } else if (info.method === 'heuristic' && info.found) {
+          // heuristics cannot be authoritative; if lastModified exists and is newer than local saved timestamp, show alert
+          try {
+            const remoteTs = info.lastModified ? Date.parse(info.lastModified) : null;
+            const localSaved = Number(docMeta.saved) || 0;
+            if (remoteTs && remoteTs > localSaved) markPullAlert();
+            if (remoteTs && remoteTs > localSaved) console.info('R2: heuristic indicates remote newer (last-modified) → Pull marked');
+            else console.info('R2: heuristic check found no evidence remote is newer');
+          } catch (e) {}
+        }
+        return info;
+      } catch (e) {
+        return { ok: false, reason: 'exception', error: String(e) };
+      }
+    };
+
+    // Wire run on open and after saving form
+    // When the R2 modal becomes active, run a background HEAD check and show pull-alert if needed.
+    try {
+      if (r2ModalOverlay && typeof MutationObserver !== 'undefined') {
+        const mo = new MutationObserver(muts => {
+          for (const m of muts) {
+            if (m.attributeName === 'class') {
+              const isActive = r2ModalOverlay.classList.contains('active');
+              if (isActive) {
+                // run check but don't block UI
+                setTimeout(() => runR2HeadCheckAndApply().catch(e => console.warn('head check failed', e)), 0);
+              }
+            }
+          }
+        });
+        mo.observe(r2ModalOverlay, { attributes: true });
+      }
+    } catch (e) { console.warn('R2 modal observer setup failed', e); }
+
+    // After R2 form submit handler already calls refreshR2Sync; run HEAD check afterwards
+    r2Form?.addEventListener('submit', event => {
+      // run check after a brief delay to let config save persist
+      setTimeout(() => runR2HeadCheckAndApply().catch(e => console.warn('head check after save failed', e)), 200);
+    });
 
 
     const updateSyncIndicators = () => {
@@ -6024,6 +6212,8 @@ ${body}
       focusEditor();
       updateStatus();
       updateAiToolbarState();
+      // Run one background HEAD check on page load to detect remote differences (non-blocking)
+      setTimeout(() => runR2HeadCheckAndApply().catch(e => console.warn('R2 head check on page load failed', e)), 0);
     });
   </script>
 
