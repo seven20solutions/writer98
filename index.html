@@ -5333,13 +5333,14 @@ ${body}
         }
         if (!confirm(IMPORT_CONFIRM_MESSAGE)) return;
 
-        // Temporarily unload the current document so users see the incoming changes on reload
+        // Temporarily make the editor read-only and show a non-destructive loading indicator
         try {
-          // Make editor read-only and show a loading placeholder
+          // Make editor read-only but keep current content visible
           editor.blur();
           editor.setAttribute('contenteditable', 'false');
           const prevContent = editor.innerHTML;
-          editor.innerHTML = '<p><em>Loading document from R2...</em></p>';
+          // Show loading state in the warning area instead of wiping editor content
+          r2Warning.textContent = 'Loading document from R2...';
           // clear local draft storage and apply imported data
           clearDraftStorage();
           applyImportedDrafts(parsed.drafts);
